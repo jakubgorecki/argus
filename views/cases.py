@@ -4,47 +4,124 @@ from snowflake.snowpark.context import get_active_session
 
 session = get_active_session()
 
-def load_cases_data():
-    cases = session.sql("SELECT * FROM AML_SCREENING.ARGUS.CASES").to_pandas()
-    metrics = session.sql("SELECT * FROM AML_SCREENING.ARGUS.CASE_METRICS").to_pandas()
-    return cases, metrics
+COUNTRY_FLAGS = {
+    'AF':'1f1e6-1f1eb','AL':'1f1e6-1f1f1','DZ':'1f1e9-1f1ff','AR':'1f1e6-1f1f7',
+    'AU':'1f1e6-1f1fa','AT':'1f1e6-1f1f9','BD':'1f1e7-1f1e9','BR':'1f1e7-1f1f7',
+    'CA':'1f1e8-1f1e6','CN':'1f1e8-1f1f3','CO':'1f1e8-1f1f4','CU':'1f1e8-1f1fa',
+    'EG':'1f1ea-1f1ec','FR':'1f1eb-1f1f7','DE':'1f1e9-1f1ea','GB':'1f1ec-1f1e7',
+    'HK':'1f1ed-1f1f0','IN':'1f1ee-1f1f3','IR':'1f1ee-1f1f7','IQ':'1f1ee-1f1f6',
+    'JP':'1f1ef-1f1f5','KP':'1f1f0-1f1f5','KR':'1f1f0-1f1f7','LB':'1f1f1-1f1e7',
+    'MY':'1f1f2-1f1fe','MX':'1f1f2-1f1fd','NG':'1f1f3-1f1ec','PK':'1f1f5-1f1f0',
+    'RU':'1f1f7-1f1fa','SA':'1f1f8-1f1e6','ZA':'1f1ff-1f1e6','SE':'1f1f8-1f1ea',
+    'SY':'1f1f8-1f1fe','TR':'1f1f9-1f1f7','AE':'1f1e6-1f1ea','US':'1f1fa-1f1f8',
+    'VE':'1f1fb-1f1ea',
+}
 
-cases_df, metrics_df = load_cases_data()
+STATUS_LABELS = {
+    'CRITICAL_MATCH': 'Critical Match',
+    'PENDING_HUMAN_REVIEW': 'Review Required',
+    'AUTO_DISMISSED': 'Auto-Dismissed',
+    'NO_MATCH': 'No Match',
+    'DISMISS_OVERRIDDEN': 'Dismiss Overridden',
+}
+
+STATUS_BG = {
+    'CRITICAL_MATCH': '#ffdad6',
+    'PENDING_HUMAN_REVIEW': '#fff3e0',
+    'AUTO_DISMISSED': '#b3ebff',
+    'NO_MATCH': '#e8e8e8',
+    'DISMISS_OVERRIDDEN': '#fff3e0',
+}
+
+STATUS_FG = {
+    'CRITICAL_MATCH': '#93000a',
+    'PENDING_HUMAN_REVIEW': '#e65100',
+    'AUTO_DISMISSED': '#004e5f',
+    'NO_MATCH': '#4c4547',
+    'DISMISS_OVERRIDDEN': '#e65100',
+}
+
+def load_cases_data():
+    cases = session.sql("""
+        SELECT
+            r.RESULT_ID AS ID,
+            r.FULL_NAME_SCREENED AS ENTITY_NAME,
+            CASE WHEN i.GENDER IS NOT NULL THEN 'INDIVIDUAL' ELSE 'ENTITY' END AS TYPE,
+            COALESCE(i.COUNTRY, 'N/A') AS COUNTRY,
+            r.DISPOSITION AS STATUS,
+            ROUND(r.COMPOSITE_SCORE * 100, 1) AS RISK_SCORE,
+            ROUND(r.NAME_SIMILARITY_SCORE * 100, 0) || '%' AS NAME_SIMILARITY,
+            r.MATCHED_ENTITY_NAME,
+            r.MATCHED_ENTITY_ALIASES,
+            r.MATCHED_LIST_NAME,
+            r.MATCHED_LIST_ABBREVIATION,
+            r.MATCHED_COUNTRY,
+            r.MATCHED_DOB,
+            r.MATCHED_POB,
+            r.AI_DECISION,
+            r.AI_REASONING,
+            r.AI_ERROR,
+            COALESCE(i.DATE_OF_BIRTH::VARCHAR, 'N/A') AS DOB,
+            COALESCE(i.PLACE_OF_BIRTH, 'N/A') AS POB,
+            r.DOB_SCORE,
+            r.DOB_MATCH_TYPE,
+            r.COUNTRY_SCORE,
+            r.POB_SCORE,
+            r.POB_MATCH_TYPE,
+            r.NAME_SIMILARITY_SCORE,
+            r.COMPOSITE_SCORE,
+            r.LOGICAL_EXCLUSION,
+            r.EXCLUSION_REASON,
+            r.CANDIDATE_COUNT,
+            r.SCREENED_AT,
+            COALESCE(i.GENDER, 'N/A') AS GENDER,
+            COALESCE(i.SOURCE_SYSTEM, 'N/A') AS SOURCE_SYSTEM
+        FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS r
+        LEFT JOIN AML_SCREENING.PIPELINE.INCOMING_SCREENINGS i
+            ON r.SCREENING_REQUEST_ID = i.SCREENING_REQUEST_ID
+        WHERE r.DISPOSITION != 'AUTO_DISMISSED'
+           OR r.SCREENED_AT >= DATEADD('day', -7, CURRENT_TIMESTAMP())
+        ORDER BY r.COMPOSITE_SCORE DESC
+    """).to_pandas()
+    cases['FLAG_URL'] = cases['COUNTRY'].map(COUNTRY_FLAGS).fillna('1f3f3-fe0f') + '.png'
+    return cases
+
+cases_df = load_cases_data()
 
 if 'selected_case' in st.session_state and st.session_state['selected_case'] is not None:
     case_id = st.session_state['selected_case']
-        
-    case_data = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.CASES WHERE ID = '{case_id}'").to_pandas()
+
+    case_data = cases_df[cases_df['ID'] == case_id]
 
     if case_data.empty:
         st.error("Case data not found.")
         st.stop()
-        
+
     row = case_data.iloc[0]
 
     st.markdown("<div style='margin-top: -32px;'></div>", unsafe_allow_html=True)
-    
-    flag_color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
-    text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
-    flag_label = "HIGH RISK HIT" if row["RISK_SCORE"] > 70 else ("REVIEW TRIGGERED" if row["RISK_SCORE"] > 40 else "CLEARED")
-    
+
+    flag_color = STATUS_BG.get(row["STATUS"], "#ffdad6")
+    text_color = STATUS_FG.get(row["STATUS"], "#93000a")
+    flag_label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
+
     st.markdown(f"""
         <div style='display:flex; align-items:center; gap: 12px; margin-bottom: 8px;'>
             <span style='background-color: {flag_color}; color: {text_color}; padding: 4px 12px; border-radius: 16px; font-size: 11px; font-weight: bold; display:inline-flex; align-items:center; gap:4px;'>
                 <span class='material-symbols-rounded' style='font-size:14px;'>flag</span> {flag_label}
             </span>
-            <span style='color: #8C7C83; font-size: 13px; white-space: nowrap;'>Updated {row['LAST_ACTIVITY']}</span>
+            <span style='color: #8C7C83; font-size: 13px; white-space: nowrap;'>Screened {row['SCREENED_AT']}</span>
         </div>
         <h1 style='margin:0; padding:0; color: #2c0210; font-size: 48px; line-height: 1.1;'>{row['ENTITY_NAME']}</h1>
     """, unsafe_allow_html=True)
 
     det_col1, det_col2 = st.columns([7, 3], vertical_alignment="center")
-    
+
     with det_col1:
         st.markdown(f"""
             <div style='display:flex; align-items:center; gap: 16px; margin-top: 12px; color: #524346; font-size: 14px;'>
-                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>fingerprint</span> <b>ID:</b> {row['ID']}</div>
-                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>location_on</span> <b>Location:</b> {row['COUNTRY']}</div>
+                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>fingerprint</span> <b>ID:</b> {row['ID'][:18]}...</div>
+                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>location_on</span> <b>Country:</b> {row['COUNTRY']}</div>
                 <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>calendar_today</span> <b>DOB:</b> {row['DOB']}</div>
             </div>
         """, unsafe_allow_html=True)
@@ -73,7 +150,7 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         }
         </style>
         """, unsafe_allow_html=True)
-        
+
         btn_col1, btn_col2 = st.columns([1, 1])
         with btn_col1:
             if st.button("Share Case", icon=":material/share:", use_container_width=True):
@@ -86,14 +163,14 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
     st.markdown(f"""
         <div style='display:flex; align-items:center; gap: 0px; margin-top: 16px; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid #EFEBEB;'>
             <div style='display:flex; align-items:center; gap:8px; padding-right: 20px; border-right: 1px solid #EFEBEB;'>
-                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>business</span> 
-                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>CLIENT:</span>
-                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row['CLIENT']}</span>
+                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>business</span>
+                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>SOURCE:</span>
+                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row['SOURCE_SYSTEM']}</span>
             </div>
             <div style='display:flex; align-items:center; gap:8px; padding-left: 20px;'>
-                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>payment</span> 
-                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>PRODUCT:</span>
-                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row['PRODUCT']}</span>
+                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>payment</span>
+                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>MATCHED LIST:</span>
+                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row.get('MATCHED_LIST_NAME', 'N/A') or 'N/A'}</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -102,101 +179,91 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
 
     with col_left:
         with st.container(border=True):
-            wl_hits_df = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.WATCHLIST_HITS WHERE CASE_ID = '{case_id}'").to_pandas()
+            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Match Comparison</h4><span style='font-size:10px; font-weight:600; color:#524346; letter-spacing: 0.5px; text-transform: uppercase;'>Source: {}</span></div>".format(row.get('MATCHED_LIST_ABBREVIATION', 'N/A') or 'N/A'), unsafe_allow_html=True)
 
-            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Watchlist Hit Details</h4><span style='font-size:10px; font-weight:600; color:#524346; letter-spacing: 0.5px; text-transform: uppercase;'>Source: World-Check Global</span></div>", unsafe_allow_html=True)
-            
-            if not wl_hits_df.empty:
-                table_html = """<div style="overflow-x: auto; width: 100%; margin-bottom: 24px;">
+            comparison_data = [
+                ("Full Name", row['ENTITY_NAME'], row.get('MATCHED_ENTITY_NAME', 'N/A') or 'N/A',
+                 "MATCH" if row.get('NAME_SIMILARITY_SCORE', 0) and row['NAME_SIMILARITY_SCORE'] >= 0.85 else ("PARTIAL" if row.get('NAME_SIMILARITY_SCORE', 0) and row['NAME_SIMILARITY_SCORE'] >= 0.5 else "MISMATCH")),
+                ("Date of Birth", row['DOB'], row.get('MATCHED_DOB', 'N/A') or 'N/A',
+                 "MATCH" if row.get('DOB_SCORE', 0) and row['DOB_SCORE'] >= 0.85 else ("PARTIAL" if row.get('DOB_MATCH_TYPE') else "MISSING")),
+                ("Country", row['COUNTRY'], row.get('MATCHED_COUNTRY', 'N/A') or 'N/A',
+                 "MATCH" if row.get('COUNTRY_SCORE', 0) and row['COUNTRY_SCORE'] >= 0.85 else "MISMATCH"),
+                ("Place of Birth", row['POB'], row.get('MATCHED_POB', 'N/A') or 'N/A',
+                 "MATCH" if row.get('POB_SCORE', 0) and row['POB_SCORE'] >= 0.85 else ("PARTIAL" if row.get('POB_MATCH_TYPE') else "MISSING")),
+            ]
+
+            if row.get('MATCHED_ENTITY_ALIASES') and pd.notna(row['MATCHED_ENTITY_ALIASES']):
+                comparison_data.append(("Aliases", "—", row['MATCHED_ENTITY_ALIASES'], "INFO"))
+
+            table_html = """<div style="overflow-x: auto; width: 100%; margin-bottom: 24px;">
 <table style="width: 100%; text-align: left; border-collapse: collapse; font-family: 'Inter', sans-serif; min-width: 600px; border: none;">
 <thead style="border-bottom: 2px solid #EFEBEB;">
 <tr>
 <th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Attribute</th>
-<th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Subject Data</th>
-<th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Watchlist Hit</th>
+<th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Screened Data</th>
+<th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Sanctions Match</th>
 <th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Status</th>
 </tr>
 </thead>
 <tbody style="background-color: var(--argus-card-bg);">"""
-                for idx, h_row in wl_hits_df.iterrows():
-                    match_stat = h_row['MATCH_STATUS']
-                    bg_col = "#b3ebff" if match_stat == "MATCH" else ("#cfc4c6" if match_stat == "MISMATCH" else "#e8dddf")
-                    txt_col = "#001f27" if match_stat == "MATCH" else "#4c4547"
-                    bb_style = f'border-bottom: 1px solid var(--argus-border);' if idx < len(wl_hits_df) - 1 else ''
-                    table_html += f"""
+            for idx_h, (attr, subj, wl, stat) in enumerate(comparison_data):
+                bg_col = "#b3ebff" if stat == "MATCH" else ("#cfc4c6" if stat == "MISMATCH" else ("#e8dddf" if stat in ("PARTIAL","INFO") else "#f5f5f5"))
+                txt_col = "#001f27" if stat == "MATCH" else "#4c4547"
+                bb_style = f'border-bottom: 1px solid var(--argus-border);' if idx_h < len(comparison_data) - 1 else ''
+                table_html += f"""
 <tr style="{bb_style}">
-<td style="padding: 16px 24px; font-weight: 600; font-size: 14px; color: var(--argus-text-dark);">{h_row['ATTRIBUTE']}</td>
-<td style="padding: 16px 24px; font-size: 14px; color: var(--argus-text-muted);">{h_row['SUBJECT_DATA']}</td>
-<td style="padding: 16px 24px; font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{h_row['WATCHLIST_DATA']}</td>
-<td style="padding: 16px 24px;"><span style="background-color: {bg_col}; color: {txt_col}; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">{match_stat}</span></td>
+<td style="padding: 16px 24px; font-weight: 600; font-size: 14px; color: var(--argus-text-dark);">{attr}</td>
+<td style="padding: 16px 24px; font-size: 14px; color: var(--argus-text-muted);">{subj}</td>
+<td style="padding: 16px 24px; font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{wl}</td>
+<td style="padding: 16px 24px;"><span style="background-color: {bg_col}; color: {txt_col}; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">{stat}</span></td>
 </tr>"""
-                table_html += """</tbody>
+            table_html += """</tbody>
 </table>
 </div>"""
-                st.markdown(table_html, unsafe_allow_html=True)
-            else:
-                st.markdown("<div style='padding:24px; background-color:#f3f3f5; border-radius:12px; font-size:14px; color:#524346; margin: 8px 0 24px 0;'>No watchlist attributes flagged for this entity.</div>", unsafe_allow_html=True)
+            st.markdown(table_html, unsafe_allow_html=True)
 
         with st.container(border=True):
-            ev_df = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.EVIDENCE_FILES WHERE CASE_ID = '{case_id}'").to_pandas()
-            
-            st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Evidence & Files</h4><span style='background-color:#e8dddf; color:#696163; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;'>{len(ev_df)} FILES</span></div>", unsafe_allow_html=True)
-            
-            grid_html = "<div style='display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;'>"
-            for idx, e_row in ev_df.iterrows():
-                fname = e_row['FILE_NAME']
-                fdate = e_row['UPLOAD_DATE']
-                icon = "receipt_long" if ".pdf" in fname else "image"
-                grid_html += f"""
-                <div style='display:flex; align-items:center; gap:12px; padding:12px; background-color:#f8f9fa; border-radius:8px; border: 1px solid #EFEBEB;'>
-                    <div style='background-color:#fff; color:#1a1c1d; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;'><span class='material-symbols-rounded' style='font-size:20px;'>{icon}</span></div>
-                    <div style='overflow:hidden;'>
-                        <div style='font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{fname}</div>
-                        <div style='font-size:10px; color:#524346;'>{fdate}</div>
+            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Score Breakdown</h4></div>", unsafe_allow_html=True)
+
+            scores = [
+                ("Name Similarity", row.get('NAME_SIMILARITY_SCORE', 0) or 0),
+                ("DOB", row.get('DOB_SCORE', 0) or 0),
+                ("Country", row.get('COUNTRY_SCORE', 0) or 0),
+                ("Place of Birth", row.get('POB_SCORE', 0) or 0),
+                ("Composite", row.get('COMPOSITE_SCORE', 0) or 0),
+            ]
+            score_html = "<div style='display:flex; flex-direction:column; gap:12px;'>"
+            for s_name, s_val in scores:
+                pct = round(s_val * 100, 1)
+                bar_color = "#E53E3E" if pct >= 85 else ("#f57c00" if pct >= 50 else "#38A169")
+                score_html += f"""
+                <div>
+                    <div style='display:flex; justify-content:space-between; margin-bottom:4px;'>
+                        <span style='font-size:13px; font-weight:600; color:var(--argus-text-dark);'>{s_name}</span>
+                        <span style='font-size:13px; font-weight:700; color:var(--argus-text-dark);'>{pct}%</span>
+                    </div>
+                    <div style='width:100%; height:8px; background:var(--argus-accent-light); border-radius:4px; overflow:hidden;'>
+                        <div style='width:{pct}%; height:100%; background:{bar_color}; border-radius:4px;'></div>
                     </div>
                 </div>"""
-            grid_html += "</div>"
-            st.markdown(grid_html, unsafe_allow_html=True)
-            
-            st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
-            st.file_uploader("Drop additional evidence", accept_multiple_files=True, label_visibility="collapsed")
+            score_html += "</div>"
+            st.markdown(score_html, unsafe_allow_html=True)
+
+            if row.get('LOGICAL_EXCLUSION'):
+                st.warning(f"Logical Exclusion: {row.get('EXCLUSION_REASON', 'N/A')}")
 
         with st.container(border=True):
-            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Decision History</h4><span style='font-size: 13px; font-weight: 600; color: #471524; cursor: pointer;'>View Audit Log</span></div>", unsafe_allow_html=True)
-            
-            history_df = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.DECISION_HISTORY WHERE CASE_ID = '{case_id}' ORDER BY SORT_ORDER DESC").to_pandas()
-            
-            timeline_parts = ["<div style='margin-left: 20px; position: relative; padding: 24px 0 24px 0; font-family: \"Inter\", sans-serif;'>"]
-            for idx, h_row in history_df.iterrows():
-                title = h_row['TITLE']
-                desc = h_row['DESCRIPTION']
-                date = h_row['TIMESTAMP']
-                dot_color = "#2c0210" if idx == 0 else "#e2e2e4" 
-                margin_bottom = "24px" if idx < len(history_df) - 1 else "0"
-                
-                line_segment = ""
-                if idx < len(history_df) - 1:
-                    line_segment = f"<div style='position: absolute; left: -1px; top: 16px; bottom: -24px; border-left: 2px solid #e2e2e4;'></div>"
-                
-                part_html = f"<div style='position: relative; padding-left: 24px; margin-bottom: {margin_bottom};'>{line_segment}"
-                part_html += f"<div style='position: absolute; left: -9px; top: 0px; width: 16px; height: 16px; border-radius: 50%; background-color: {dot_color}; box-shadow: 0 0 0 4px #fff;'></div>"
-                part_html += f"<div style='display: flex; flex-direction: column;'>"
-                part_html += f"<span style='font-size: 10px; text-transform: uppercase; color: #524346; font-weight: 600; letter-spacing: 0.5px;'>{date}</span>"
-                part_html += f"<p style='margin: 4px 0 2px 0; font-size: 14px; font-weight: 600; color: #1a1c1d;'>{title}</p>"
-                part_html += f"<p style='margin: 0; font-size: 12px; color: #524346;'>{desc}</p>"
-                part_html += "</div></div>"
-                timeline_parts.append(part_html)
-                
-            timeline_parts.append("</div>")
-            full_html = "".join(timeline_parts)
-            st.markdown(full_html, unsafe_allow_html=True)
+            st.markdown("<h4 style='margin:0 0 16px 0;'>Evidence & Files</h4>", unsafe_allow_html=True)
+            st.markdown("<div style='padding:24px; background-color:#f3f3f5; border-radius:12px; font-size:14px; color:#524346;'>No evidence files attached to this screening result. Upload files below to attach evidence.</div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
+            st.file_uploader("Drop additional evidence", accept_multiple_files=True, label_visibility="collapsed")
 
         with st.form(key=f"review_form_{case_id}", clear_on_submit=True, border=True):
             st.markdown("<h4 style='margin-bottom:16px;'>Record Review Decision</h4>", unsafe_allow_html=True)
             new_note = st.text_area("Rationale", label_visibility="collapsed", placeholder="Provide rationale for your decision...")
-            
+
             st.markdown("<hr style='margin: 16px 0; border: none; border-top: 1px solid #EFEBEB;'>", unsafe_allow_html=True)
-            
+
             rc1, rc2, rc3 = st.columns([5, 4, 3], vertical_alignment="center")
             with rc1:
                 st.markdown("""
@@ -209,90 +276,110 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                 decision = st.selectbox("Decision", ["Cleared", "Escalate", "Reject & Block"], label_visibility="collapsed")
             with rc3:
                 submit_review = st.form_submit_button("Submit Review", type="primary", use_container_width=True)
-                
-            if submit_review:
-                from datetime import datetime
-                now_str = datetime.now().strftime("Today, %I:%M %p")
-                
-                desc_str = new_note if new_note.strip() else "No additional rationale provided."
-                title_str = f"Analyst Review: {decision}"
-                
-                cur_hist = session.sql(f"SELECT MAX(SORT_ORDER) as M FROM AML_SCREENING.ARGUS.DECISION_HISTORY WHERE CASE_ID='{case_id}'").to_pandas()
-                max_order = int(cur_hist['M'].iloc[0]) if not cur_hist.empty and pd.notna(cur_hist['M'].iloc[0]) else 0
-                
-                full_desc = f"Analyst Julian Thome ({decision}): " + desc_str
-                session.sql(f"INSERT INTO AML_SCREENING.ARGUS.DECISION_HISTORY (CASE_ID, SORT_ORDER, TIMESTAMP, TITLE, DESCRIPTION) VALUES ('{case_id}', {max_order + 1}, '{now_str}', '{title_str}', '{full_desc}')").collect()
-                
-                new_stat = "AUTO-CLEARED" if decision == "Cleared" else ("Investigation" if decision == "Escalate" else "Blocked")
-                session.sql(f"UPDATE AML_SCREENING.ARGUS.CASES SET STATUS = '{new_stat}' WHERE ID = '{case_id}'").collect()
-                
-                st.rerun()
 
+            if submit_review:
+                disposition_map = {"Cleared": "AUTO_DISMISSED", "Escalate": "PENDING_HUMAN_REVIEW", "Reject & Block": "CRITICAL_MATCH"}
+                new_disp = disposition_map[decision]
+                rationale = new_note.strip() if new_note.strip() else "No additional rationale provided."
+
+                session.sql(f"""
+                    UPDATE AML_SCREENING.PIPELINE.SCREENING_RESULTS
+                    SET DISPOSITION = '{new_disp}',
+                        AI_REASONING = COALESCE(AI_REASONING, '') || ' | HUMAN REVIEW: {decision} - ' || '{rationale.replace(chr(39), chr(39)+chr(39))}'
+                    WHERE RESULT_ID = '{case_id}'
+                """).collect()
+
+                session.sql(f"""
+                    INSERT INTO AML_SCREENING.PIPELINE.AUDIT_LOG (EVENT_TYPE, DETAILS)
+                    SELECT 'HUMAN_REVIEW', OBJECT_CONSTRUCT(
+                        'result_id', '{case_id}',
+                        'decision', '{decision}',
+                        'new_disposition', '{new_disp}',
+                        'rationale', '{rationale.replace(chr(39), chr(39)+chr(39))}',
+                        'completed_at', CURRENT_TIMESTAMP()::VARCHAR
+                    )
+                """).collect()
+
+                st.rerun()
 
     with col_right:
         with st.container(border=True):
+            ai_title = "AI Assessment"
+            if row.get('AI_DECISION'):
+                ai_title = f"AI Decision: {row['AI_DECISION']}"
+            ai_desc = row.get('AI_REASONING', '') or 'No AI analysis has been performed on this screening result yet.'
+            if row.get('AI_ERROR') and pd.notna(row['AI_ERROR']):
+                ai_desc += f"\n\n⚠️ Error: {row['AI_ERROR']}"
+
             st.markdown(f"""
                 <div style='display:flex; flex-direction:column; gap:16px;'>
                     <div style='background-color:#2c0210; color:white; padding:12px; border-radius:12px; width: fit-content;'>
                         <span class='material-symbols-rounded'>auto_awesome</span>
                     </div>
                     <div>
-                        <h4 style='margin:0; color:#2c0210; font-size: 18px;'>{row['AI_INSIGHT_TITLE']}</h4>
-                        <p style='margin-top:12px; font-size:14px; color:#1a1c1d; line-height: 1.5;'>{row['AI_INSIGHT_DESC']}</p>
+                        <h4 style='margin:0; color:#2c0210; font-size: 18px;'>{ai_title}</h4>
+                        <p style='margin-top:12px; font-size:14px; color:#1a1c1d; line-height: 1.5;'>{ai_desc}</p>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
 
+        with st.container(border=True):
+            st.markdown("<h4 style='margin:0 0 16px 0;'>Screening Metadata</h4>", unsafe_allow_html=True)
+            meta_items = [
+                ("Gender", row.get('GENDER', 'N/A')),
+                ("Candidates Found", str(row.get('CANDIDATE_COUNT', 0))),
+                ("DOB Match Type", row.get('DOB_MATCH_TYPE', 'N/A') or 'N/A'),
+                ("POB Match Type", row.get('POB_MATCH_TYPE', 'N/A') or 'N/A'),
+            ]
+            for m_label, m_val in meta_items:
+                st.markdown(f"""
+                    <div style='display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--argus-border);'>
+                        <span style='font-size:12px; font-weight:600; color:var(--argus-text-muted);'>{m_label}</span>
+                        <span style='font-size:12px; font-weight:700; color:var(--argus-text-dark);'>{m_val}</span>
+                    </div>
+                """, unsafe_allow_html=True)
 
 
 else:
     st.title("Case Management")
 
+    total = len(cases_df)
+    pending = len(cases_df[cases_df['STATUS'].isin(['PENDING_HUMAN_REVIEW', 'CRITICAL_MATCH'])])
+    dismissed = len(cases_df[cases_df['STATUS'] == 'AUTO_DISMISSED'])
+    no_match = len(cases_df[cases_df['STATUS'] == 'NO_MATCH'])
+
     col1, col2, col3, col4 = st.columns(4)
-
     with col1:
-        val = metrics_df[metrics_df['METRIC'] == 'Active Cases']['VALUE'].values[0]
-        delta = metrics_df[metrics_df['METRIC'] == 'Active Cases']['DELTA'].values[0]
-        st.metric("Active Cases", val, delta=delta, delta_color="normal")
-
+        st.metric("Total Screened", total)
     with col2:
-        val = metrics_df[metrics_df['METRIC'] == 'Pending Review (High Risk)']['VALUE'].values[0]
-        delta = metrics_df[metrics_df['METRIC'] == 'Pending Review (High Risk)']['DELTA'].values[0]
-        st.metric("Pending Review (High Risk)", val, delta=delta, delta_color="inverse")
-
+        st.metric("Pending Review", pending, delta_color="inverse")
     with col3:
-        val = metrics_df[metrics_df['METRIC'] == 'AI Auto-Cleared (24H)']['VALUE'].values[0]
-        delta = metrics_df[metrics_df['METRIC'] == 'AI Auto-Cleared (24H)']['DELTA'].values[0]
-        st.metric("AI Auto-Cleared (24H)", val, delta=delta, delta_color="normal")
-
+        st.metric("Auto-Dismissed", dismissed, delta_color="normal")
     with col4:
-        val = metrics_df[metrics_df['METRIC'] == 'Avg. Resolution Time']['VALUE'].values[0]
-        delta = metrics_df[metrics_df['METRIC'] == 'Avg. Resolution Time']['DELTA'].values[0]
-        st.metric("Avg. Resolution Time", f"{val} hrs", delta=delta if delta else None)
+        st.metric("No Match", no_match)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    f_col1, f_col2, f_col3, f_col_empty, f_col4 = st.columns([2, 2, 2, 5, 3])
+    f_col1, f_col2, f_col3 = st.columns([2, 2, 2])
     with f_col1:
-        status_filter = st.selectbox("Filters", ["All Statuses", "Pending Review", "Investigation", "AUTO-CLEARED"], index=1, label_visibility="collapsed")
+        status_options = ["All Statuses"] + sorted(cases_df['STATUS'].unique().tolist())
+        status_filter = st.selectbox("Status", status_options, index=0, label_visibility="collapsed")
     with f_col2:
         risk_filter = st.selectbox("Risk", ["Risk: All Levels", "High", "Medium", "Low"], label_visibility="collapsed")
     with f_col3:
-        entity_filter = st.selectbox("Entity", ["Entity: All", "Corporate", "Individual"], label_visibility="collapsed")
-    with f_col4:
-        st.button("+ New Case", type="primary", use_container_width=True)
+        entity_filter = st.selectbox("Entity", ["Entity: All", "Individual", "Entity"], label_visibility="collapsed")
 
     filtered_df = cases_df.copy()
-    
     filtered_df = filtered_df.sort_values(by="RISK_SCORE", ascending=False)
+
     if status_filter != "All Statuses":
         filtered_df = filtered_df[filtered_df['STATUS'] == status_filter]
-    
+
     if risk_filter != "Risk: All Levels":
         if risk_filter == "High": filtered_df = filtered_df[filtered_df['RISK_SCORE'] >= 70]
         elif risk_filter == "Medium": filtered_df = filtered_df[(filtered_df['RISK_SCORE'] >= 30) & (filtered_df['RISK_SCORE'] < 70)]
         elif risk_filter == "Low": filtered_df = filtered_df[filtered_df['RISK_SCORE'] < 30]
-        
+
     if entity_filter != "Entity: All":
         filtered_df = filtered_df[filtered_df['TYPE'] == entity_filter.upper()]
 
@@ -302,7 +389,7 @@ else:
 <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
     <div style="width: 40%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
     <div style="width: 25%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
-    <div style="width: 15%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">AI Confidence</div>
+    <div style="width: 15%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
     <div style="width: 15%; text-align: right; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
 </div>
 """, unsafe_allow_html=True)
@@ -311,7 +398,7 @@ else:
 <style>
 .case-row {
     border: 1px solid #EFEBEB;
-    border-top: none; 
+    border-top: none;
     padding: 16px 24px;
     background-color: #ffffff;
     transition: all 0.2s ease;
@@ -335,18 +422,15 @@ else:
 }
 </style>
 """, unsafe_allow_html=True)
-    
+
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
     else:
         for idx, row in filtered_df.iterrows():
-            status_labels = {'CRITICAL_MATCH': 'Critical Match', 'PENDING_HUMAN_REVIEW': 'Review Required', 'AUTO_DISMISSED': 'Auto-Dismissed', 'NO_MATCH': 'No Match', 'AUTO-CLEARED': 'Auto-Cleared', 'Pending Review': 'Pending Review', 'Investigation': 'Investigation', 'Blocked': 'Blocked'}
-            status_bg = {'CRITICAL_MATCH': '#ffdad6', 'PENDING_HUMAN_REVIEW': '#fff3e0', 'AUTO_DISMISSED': '#b3ebff', 'NO_MATCH': '#e8e8e8', 'AUTO-CLEARED': '#b3ebff', 'Pending Review': '#ffdad6', 'Investigation': '#ffdad6', 'Blocked': '#ffdad6'}
-            status_fg = {'CRITICAL_MATCH': '#93000a', 'PENDING_HUMAN_REVIEW': '#e65100', 'AUTO_DISMISSED': '#004e5f', 'NO_MATCH': '#4c4547', 'AUTO-CLEARED': '#004e5f', 'Pending Review': '#93000a', 'Investigation': '#93000a', 'Blocked': '#93000a'}
-            color = status_bg.get(row["STATUS"], "#ffdad6")
-            text_color = status_fg.get(row["STATUS"], "#93000a")
-            label = status_labels.get(row["STATUS"], row["STATUS"])
-            
+            color = STATUS_BG.get(row["STATUS"], "#ffdad6")
+            text_color = STATUS_FG.get(row["STATUS"], "#93000a")
+            label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
+
             card_html = f"""<a href="?selected_case={row['ID']}" target="_self" class="case-row">
 <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
 <div style="display: flex; flex-direction: column; width: 40%;">
@@ -363,7 +447,7 @@ else:
 <div style="font-size: 11px; font-weight: 700; color: var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
 </div>
 <div style="width: 15%;">
-<div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
+<div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
 <span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">{label}</span>
