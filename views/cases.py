@@ -365,27 +365,45 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    display_df = filtered_df[['ENTITY_NAME', 'TYPE', 'COUNTRY', 'RISK_SCORE', 'NAME_SIMILARITY', 'STATUS']].copy()
-    display_df['STATUS'] = display_df['STATUS'].map(STATUS_LABELS).fillna(display_df['STATUS'])
-    display_df.columns = ['Entity Name', 'Type', 'Country', 'Risk Score', 'Name Similarity', 'Status']
+    st.markdown("""
+<style>
+.case-btn button {
+    background: #fff !important;
+    border: 1px solid #EFEBEB !important;
+    border-radius: 8px !important;
+    color: var(--argus-text-dark) !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    padding: 14px 20px !important;
+    white-space: pre !important;
+    transition: all 0.2s ease !important;
+    margin-bottom: 2px !important;
+}
+.case-btn button:hover {
+    background: #fafafa !important;
+    border-left: 4px solid #4A192C !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    selection = st.dataframe(
-        display_df,
-        use_container_width=True,
-        hide_index=True,
-        on_select="rerun",
-        selection_mode="single-row",
-        column_config={
-            "Risk Score": st.column_config.ProgressColumn(
-                min_value=0,
-                max_value=100,
-                format="%.1f",
-            ),
-        },
-    )
+    header = f"{'Entity':<30} {'Risk':>6}  {'Similarity':>10}  {'Status':<18}"
+    st.markdown(f"<div style='padding:0 20px 8px 20px; border-bottom:2px solid #EFEBEB; margin-bottom:4px; font-family:Courier New,monospace; font-size:12px; font-weight:700; color:#8C7C83; white-space:pre;'>{header}</div>", unsafe_allow_html=True)
 
-    if selection and selection.selection and selection.selection.rows:
-        selected_idx = selection.selection.rows[0]
-        selected_id = filtered_df.iloc[selected_idx]['ID']
-        st.query_params["selected_case"] = selected_id
-        st.rerun()
+    if filtered_df.empty:
+        st.info("No cases match the selected filters.")
+    else:
+        for idx, row in filtered_df.iterrows():
+            label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
+            name = row['ENTITY_NAME'][:28].ljust(28)
+            risk = f"{row['RISK_SCORE']:>6.1f}"
+            sim = f"{row['NAME_SIMILARITY']:>10}"
+            status = label[:18].ljust(18)
+            btn_label = f"{name}  {risk}  {sim}  {status}"
+
+            st.markdown("<div class='case-btn'>", unsafe_allow_html=True)
+            if st.button(btn_label, key=f"c_{row['ID']}", use_container_width=True):
+                st.query_params["selected_case"] = row["ID"]
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
