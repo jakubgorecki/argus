@@ -281,8 +281,8 @@ def generate_case_pdf(row, audit_events):
     return buf.getvalue()
 
 def _country_flag_code(iso2):
-    if not iso2 or len(iso2) != 2 or not iso2.isalpha():
-        return '1f3f3-fe0f'
+    if not iso2 or len(iso2) != 2 or not iso2.isalpha() or iso2.upper() == 'NA':
+        return ''
     a, b = iso2.upper()
     return f"{0x1F1E6 + ord(a) - ord('A'):x}-{0x1F1E6 + ord(b) - ord('A'):x}"
 
@@ -697,6 +697,7 @@ else:
             txt_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
             rid = row['ID']
+            flag_img = f"<img src=\"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}\" style=\"width:20px; height:20px;\" />" if row['FLAG_URL'] else ""
 
             col_row, col_btn = st.columns([9, 1])
             with col_row:
@@ -704,8 +705,7 @@ else:
 <div style="height:84px; box-sizing:border-box; border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif;">
 <div style="width:42%; display:flex; flex-direction:column;">
 <div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
-<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width:20px; height:20px;" />
-<span style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
+{flag_img}<span style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
 </div>
 <span style="font-size:10px; color:var(--argus-text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:32px;">{row['TYPE']}</span>
 </div>

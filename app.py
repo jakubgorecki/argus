@@ -38,15 +38,20 @@ from views import components
 components.render_topbar()
 
 if "selected_case" in st.query_params:
-    st.session_state["selected_case"] = st.query_params["selected_case"]
-elif pg.title == "Cases":
+    if st.query_params.get("selected_case") == "":
+        del st.query_params["selected_case"]
+        st.session_state.pop("selected_case", None)
+        st.rerun()
+    else:
+        st.session_state["selected_case"] = st.query_params["selected_case"]
+else:
     st.session_state.pop("selected_case", None)
 
 if pg.title == "Cases" and st.session_state.get('selected_case'):
     case_id = st.session_state.get('selected_case')
     components.render_breadcrumbs([
         ("ARGUS", "/"),
-        ("Cases", "/cases"),
+        ("Cases", "?page=cases"),
         (case_id, None)
     ])
 else:

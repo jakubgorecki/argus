@@ -98,6 +98,12 @@ button {
     color: var(--argus-text-dark) !important;
 }
 
+[data-testid="stTextInput"] input:focus {
+    background-color: var(--argus-accent-light) !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
 [data-testid="stTextInput"] input::placeholder {
     color: var(--argus-text-muted) !important;
 }

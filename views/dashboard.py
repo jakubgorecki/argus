@@ -5,8 +5,8 @@ from snowflake.snowpark.context import get_active_session
 session = get_active_session()
 
 def _country_flag_code(iso2):
-    if not iso2 or len(iso2) != 2 or not iso2.isalpha():
-        return '1f3f3-fe0f'
+    if not iso2 or len(iso2) != 2 or not iso2.isalpha() or iso2.upper() == 'NA':
+        return ''
     a, b = iso2.upper()
     return f"{0x1F1E6 + ord(a) - ord('A'):x}-{0x1F1E6 + ord(b) - ord('A'):x}"
 
