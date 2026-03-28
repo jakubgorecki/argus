@@ -340,8 +340,12 @@ else:
         st.info("No cases match the selected filters.")
     else:
         for idx, row in filtered_df.iterrows():
-            color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
-            text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
+            status_labels = {'CRITICAL_MATCH': 'Critical Match', 'PENDING_HUMAN_REVIEW': 'Review Required', 'AUTO_DISMISSED': 'Auto-Dismissed', 'NO_MATCH': 'No Match', 'AUTO-CLEARED': 'Auto-Cleared', 'Pending Review': 'Pending Review', 'Investigation': 'Investigation', 'Blocked': 'Blocked'}
+            status_bg = {'CRITICAL_MATCH': '#ffdad6', 'PENDING_HUMAN_REVIEW': '#fff3e0', 'AUTO_DISMISSED': '#b3ebff', 'NO_MATCH': '#e8e8e8', 'AUTO-CLEARED': '#b3ebff', 'Pending Review': '#ffdad6', 'Investigation': '#ffdad6', 'Blocked': '#ffdad6'}
+            status_fg = {'CRITICAL_MATCH': '#93000a', 'PENDING_HUMAN_REVIEW': '#e65100', 'AUTO_DISMISSED': '#004e5f', 'NO_MATCH': '#4c4547', 'AUTO-CLEARED': '#004e5f', 'Pending Review': '#93000a', 'Investigation': '#93000a', 'Blocked': '#93000a'}
+            color = status_bg.get(row["STATUS"], "#ffdad6")
+            text_color = status_fg.get(row["STATUS"], "#93000a")
+            label = status_labels.get(row["STATUS"], row["STATUS"])
             
             card_html = f"""<a href="?selected_case={row['ID']}" target="_self" class="case-row">
 <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
@@ -362,7 +366,7 @@ else:
 <div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block;">{row['STATUS']}</span>
+<span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block;">{label}</span>
 </div>
 </div>
 </a>"""

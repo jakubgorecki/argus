@@ -72,8 +72,9 @@ with col_charts:
 
 with col_metrics:
     pending_count = session.sql("SELECT COUNT(*) AS C FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS WHERE DISPOSITION IN ('PENDING_HUMAN_REVIEW','CRITICAL_MATCH')").to_pandas()['C'].iloc[0]
-    employees_df = session.sql("SELECT * FROM AML_SCREENING.ARGUS.EMPLOYEES LIMIT 3").to_pandas()
     
+    employees_df = session.sql("SELECT * FROM AML_SCREENING.ARGUS.EMPLOYEES LIMIT 3").to_pandas()
+
     avatar_html = ""
     for idx, e_row in employees_df.iterrows():
         ml = "-12px" if idx > 0 else "0px"
@@ -116,7 +117,10 @@ with st.container(border=True):
     st.markdown("""<style>.dash-card { border:1px solid #EFEBEB; border-radius:8px; padding:16px 24px; background-color:#ffffff; transition:box-shadow 0.2s ease, background-color 0.2s ease; margin-bottom:12px; display:block; text-decoration:none !important; color:inherit !important; } .dash-card:hover { background-color:#fafafa; box-shadow:0 4px 12px rgba(0,0,0,0.05); }</style>""", unsafe_allow_html=True)
     df = fetch_dash_cases().head(5)
     for idx, row in df.iterrows():
-        color = "#E53E3E" if row['STATUS'] in ('CRITICAL_MATCH','PENDING_HUMAN_REVIEW') else ("#D69E2E" if row['STATUS'] == 'NO_MATCH' else "#38A169")
+        status_labels = {'CRITICAL_MATCH': 'Critical Match', 'PENDING_HUMAN_REVIEW': 'Review Required', 'AUTO_DISMISSED': 'Auto-Dismissed', 'NO_MATCH': 'No Match'}
+        status_colors = {'CRITICAL_MATCH': '#E53E3E', 'PENDING_HUMAN_REVIEW': '#f57c00', 'AUTO_DISMISSED': '#38A169', 'NO_MATCH': '#D69E2E'}
+        label = status_labels.get(row['STATUS'], row['STATUS'])
+        color = status_colors.get(row['STATUS'], '#757575')
         card_html = f"""<a href="cases?selected_case={row['ID']}" target="_self" class="dash-card">
 <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
 <div style="display: flex; flex-direction: column; width: 40%;">
@@ -137,7 +141,7 @@ with st.container(border=True):
 <div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-block;">{row['STATUS']}</span>
+<span style="background-color: {color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-block;">{label}</span>
 </div>
 </div>
 </a>"""
