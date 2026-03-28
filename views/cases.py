@@ -389,7 +389,7 @@ else:
 """, unsafe_allow_html=True)
 
     header = f"{'Entity':<30} {'Risk':>6}  {'Similarity':>10}  {'Status':<18}"
-    st.markdown(f"<div style='padding:8px 20px; border-bottom:2px solid #EFEBEB; margin-bottom:4px; font-family:Courier New,monospace; font-size:13px; font-weight:700; color:#8C7C83; white-space:pre;'>{header}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='padding:14px 24px; border-bottom:2px solid #EFEBEB; margin-bottom:4px; font-family:Courier New,monospace; font-size:13px; font-weight:700; color:#8C7C83; white-space:pre;'>{header}</div>", unsafe_allow_html=True)
 
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
