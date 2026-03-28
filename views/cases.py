@@ -514,7 +514,7 @@ if selected_case is not None:
                 for _, ef in evidence_df.iterrows():
                     size_kb = round(ef['FILE_SIZE'] / 1024, 1) if ef['FILE_SIZE'] else 0
                     ts = str(ef['UPLOADED_AT'])[:16]
-                    fc1, fc2 = st.columns([8, 2], vertical_alignment="center")
+                    fc1, fc2, fc3 = st.columns([7, 2, 1], vertical_alignment="center")
                     with fc1:
                         st.markdown(
                             "<div style='display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--argus-border);'>"
@@ -540,6 +540,16 @@ if selected_case is not None:
                             )
                         except Exception:
                             st.button("Unavailable", disabled=True, key=f"dl_{ef['EVIDENCE_ID']}", use_container_width=True)
+                    with fc3:
+                        if st.button("", icon=":material/delete:", key=f"rm_{ef['EVIDENCE_ID']}", use_container_width=True):
+                            eid = str(ef['EVIDENCE_ID']).replace("'", "''")
+                            fname = str(ef['FILE_NAME']).replace("'", "''")
+                            session.sql(f"DELETE FROM AML_SCREENING.PIPELINE.CASE_EVIDENCE WHERE EVIDENCE_ID = '{eid}'").collect()
+                            try:
+                                session.sql(f"REMOVE @AML_SCREENING.PIPELINE.EVIDENCE_STAGE/{case_id}/{fname}").collect()
+                            except Exception:
+                                pass
+                            st.rerun()
 
             st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
             uploaded_files = st.file_uploader("Upload evidence files", accept_multiple_files=True, label_visibility="collapsed", key=f"evidence_upload_{case_id}")
