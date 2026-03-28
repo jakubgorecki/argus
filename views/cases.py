@@ -91,7 +91,45 @@ cases_df = load_cases_data()
 if 'selected_case' in st.session_state and st.session_state['selected_case'] is not None:
     case_id = st.session_state['selected_case']
 
-    case_data = cases_df[cases_df['ID'] == case_id]
+    case_data = session.sql(f"""
+        SELECT
+            r.RESULT_ID AS ID,
+            r.FULL_NAME_SCREENED AS ENTITY_NAME,
+            CASE WHEN i.GENDER IS NOT NULL THEN 'INDIVIDUAL' ELSE 'ENTITY' END AS TYPE,
+            COALESCE(i.COUNTRY, 'N/A') AS COUNTRY,
+            r.DISPOSITION AS STATUS,
+            ROUND(r.COMPOSITE_SCORE * 100, 1) AS RISK_SCORE,
+            ROUND(r.NAME_SIMILARITY_SCORE * 100, 0) || '%' AS NAME_SIMILARITY,
+            r.MATCHED_ENTITY_NAME,
+            r.MATCHED_ENTITY_ALIASES,
+            r.MATCHED_LIST_NAME,
+            r.MATCHED_LIST_ABBREVIATION,
+            r.MATCHED_COUNTRY,
+            r.MATCHED_DOB,
+            r.MATCHED_POB,
+            r.AI_DECISION,
+            r.AI_REASONING,
+            r.AI_ERROR,
+            COALESCE(i.DATE_OF_BIRTH::VARCHAR, 'N/A') AS DOB,
+            COALESCE(i.PLACE_OF_BIRTH, 'N/A') AS POB,
+            r.DOB_SCORE,
+            r.DOB_MATCH_TYPE,
+            r.COUNTRY_SCORE,
+            r.POB_SCORE,
+            r.POB_MATCH_TYPE,
+            r.NAME_SIMILARITY_SCORE,
+            r.COMPOSITE_SCORE,
+            r.LOGICAL_EXCLUSION,
+            r.EXCLUSION_REASON,
+            r.CANDIDATE_COUNT,
+            r.SCREENED_AT,
+            COALESCE(i.GENDER, 'N/A') AS GENDER,
+            COALESCE(i.SOURCE_SYSTEM, 'N/A') AS SOURCE_SYSTEM
+        FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS r
+        LEFT JOIN AML_SCREENING.PIPELINE.INCOMING_SCREENINGS i
+            ON r.SCREENING_REQUEST_ID = i.SCREENING_REQUEST_ID
+        WHERE r.RESULT_ID = '{case_id}'
+    """).to_pandas()
 
     if case_data.empty:
         st.error("Case data not found.")
@@ -431,7 +469,7 @@ else:
             text_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
 
-            card_html = f"""<a href="?selected_case={row['ID']}" target="_self" class="case-row">
+            card_html = f"""<a href="cases?selected_case={row['ID']}" target="_self" class="case-row">
 <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
 <div style="display: flex; flex-direction: column; width: 40%;">
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2px;">

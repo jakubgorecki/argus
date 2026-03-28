@@ -13,7 +13,7 @@ session = get_active_session()
 
 def load_case_ids():
     try:
-        return session.sql("SELECT ID FROM AML_SCREENING.ARGUS.CASES").to_pandas()['ID'].tolist()
+        return session.sql("SELECT RESULT_ID AS ID FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS").to_pandas()['ID'].tolist()
     except Exception:
         return []
 
