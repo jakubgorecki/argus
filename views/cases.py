@@ -366,12 +366,34 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("""
-<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
-    <div style="width: 40%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
-    <div style="width: 25%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
-    <div style="width: 15%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
-    <div style="width: 15%; text-align: right; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+<div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
+    <div style="width: 38%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
+    <div style="width: 22%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
+    <div style="width: 13%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
+    <div style="width: 17%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+    <div style="width: 10%;"></div>
 </div>
+""", unsafe_allow_html=True)
+
+    st.markdown("""
+<style>
+.case-row-container .stButton button {
+    height: 100% !important;
+    min-height: 60px !important;
+    border: 1px solid #EFEBEB !important;
+    border-left: none !important;
+    border-radius: 0 8px 8px 0 !important;
+    background: #fff !important;
+    color: var(--argus-text-muted) !important;
+    font-size: 18px !important;
+    font-weight: 600 !important;
+    transition: all 0.2s ease !important;
+}
+.case-row-container .stButton button:hover {
+    background: #f3f3f5 !important;
+    color: #4A192C !important;
+}
+</style>
 """, unsafe_allow_html=True)
 
     if filtered_df.empty:
@@ -383,31 +405,33 @@ else:
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
             rid = row['ID']
 
-            col_row, col_btn = st.columns([20, 1])
+            col_row, col_btn = st.columns([9, 1])
             with col_row:
                 st.markdown(f"""
-<div style="border:1px solid #EFEBEB; padding:16px 24px; background:#fff; border-radius:8px; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; font-family:'Inter',sans-serif;">
-<div style="display:flex; flex-direction:column; width:40%;">
+<div style="border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif; min-height:60px;">
+<div style="width:42%; display:flex; flex-direction:column;">
 <div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
 <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width:20px; height:20px;" />
 <span style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
 </div>
 <span style="font-size:10px; color:var(--argus-text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:32px;">{row['TYPE']}</span>
 </div>
-<div style="width:25%;">
+<div style="width:24%;">
 <div style="width:100%; max-width:140px; height:6px; background:var(--argus-accent-light); border-radius:3px; overflow:hidden; margin-bottom:4px;">
 <div style="width:{row['RISK_SCORE']}%; height:100%; background:var(--argus-primary); border-radius:3px;"></div>
 </div>
 <div style="font-size:11px; font-weight:700; color:var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
 </div>
-<div style="width:15%;">
+<div style="width:14%;">
 <div style="font-weight:700; font-size:14px; color:var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
 </div>
-<div style="width:15%; text-align:right;">
+<div style="width:20%; text-align:center;">
 <span style="background:{color}; color:{txt_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;">{label}</span>
 </div>
 </div>""", unsafe_allow_html=True)
             with col_btn:
-                if st.button("›", key=f"c_{rid}"):
+                st.markdown("<div class='case-row-container'>", unsafe_allow_html=True)
+                if st.button("›", key=f"c_{rid}", use_container_width=True):
                     st.query_params["selected_case"] = rid
                     st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
