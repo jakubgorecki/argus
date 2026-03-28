@@ -39,6 +39,8 @@ components.render_topbar()
 
 if "selected_case" in st.query_params:
     st.session_state["selected_case"] = st.query_params["selected_case"]
+elif pg.title == "Cases":
+    st.session_state.pop("selected_case", None)
 
 if pg.title == "Cases" and st.session_state.get('selected_case'):
     case_id = st.session_state.get('selected_case')
