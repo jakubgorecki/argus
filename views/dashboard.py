@@ -4,18 +4,11 @@ from snowflake.snowpark.context import get_active_session
 
 session = get_active_session()
 
-COUNTRY_FLAGS = {
-    'AF':'1f1e6-1f1eb','AL':'1f1e6-1f1f1','DZ':'1f1e9-1f1ff','AR':'1f1e6-1f1f7',
-    'AU':'1f1e6-1f1fa','AT':'1f1e6-1f1f9','BD':'1f1e7-1f1e9','BR':'1f1e7-1f1f7',
-    'CA':'1f1e8-1f1e6','CN':'1f1e8-1f1f3','CO':'1f1e8-1f1f4','CU':'1f1e8-1f1fa',
-    'EG':'1f1ea-1f1ec','FR':'1f1eb-1f1f7','DE':'1f1e9-1f1ea','GB':'1f1ec-1f1e7',
-    'HK':'1f1ed-1f1f0','IN':'1f1ee-1f1f3','IR':'1f1ee-1f1f7','IQ':'1f1ee-1f1f6',
-    'JP':'1f1ef-1f1f5','KP':'1f1f0-1f1f5','KR':'1f1f0-1f1f7','LB':'1f1f1-1f1e7',
-    'MY':'1f1f2-1f1fe','MX':'1f1f2-1f1fd','NG':'1f1f3-1f1ec','PK':'1f1f5-1f1f0',
-    'RU':'1f1f7-1f1fa','SA':'1f1f8-1f1e6','ZA':'1f1ff-1f1e6','SE':'1f1f8-1f1ea',
-    'SY':'1f1f8-1f1fe','TR':'1f1f9-1f1f7','AE':'1f1e6-1f1ea','US':'1f1fa-1f1f8',
-    'VE':'1f1fb-1f1ea',
-}
+def _country_flag_code(iso2):
+    if not iso2 or len(iso2) != 2 or not iso2.isalpha():
+        return '1f3f3-fe0f'
+    a, b = iso2.upper()
+    return f"{0x1F1E6 + ord(a) - ord('A'):x}-{0x1F1E6 + ord(b) - ord('A'):x}"
 
 def fetch_dash_cases():
     df = session.sql("""
@@ -35,7 +28,7 @@ def fetch_dash_cases():
             ON r.SCREENING_REQUEST_ID = i.SCREENING_REQUEST_ID
         ORDER BY r.COMPOSITE_SCORE DESC
     """).to_pandas()
-    df['FLAG_URL'] = df['COUNTRY'].map(COUNTRY_FLAGS).fillna('1f3f3-fe0f') + '.png'
+    df['FLAG_URL'] = df['COUNTRY'].apply(_country_flag_code) + '.png'
     return df
 
 @st.cache_data(ttl=300)

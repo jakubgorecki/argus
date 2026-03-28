@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import json
+from io import BytesIO
+from fpdf import FPDF
 from snowflake.snowpark.context import get_active_session
 from datetime import datetime
 
@@ -30,9 +32,9 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
     })
 
     ai_val = str(row.get('AI_DECISION') or '').strip()
-    if ai_val and ai_val.upper() != 'NONE' and pd.notna(row.get('AI_DECISION')):
+    ai_reasoning = str(row.get('AI_REASONING') or '').strip()
+    if ai_val and ai_reasoning:
         ai_ts = row['SCREENED_AT']
-        ai_reasoning = str(row.get('AI_REASONING') or '').strip()
         events.append({
             "icon": "auto_awesome",
             "title": "AI Adjudication: " + ai_val,
@@ -54,7 +56,7 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
         ORDER BY CREATED_AT ASC
     """).to_pandas()
 
-    icon_map = {"Cleared": "check_circle", "Escalate": "arrow_upward", "Reject & Block": "block"}
+    icon_map = {"Clear": "check_circle", "Escalate": "arrow_upward"}
     for _, a_row in audit_df.iterrows():
         decision = str(a_row.get('DECISION', 'Unknown') or 'Unknown')
         rationale = str(a_row.get('RATIONALE', '') or '')
@@ -105,23 +107,190 @@ def render_audit_trail(events):
             unsafe_allow_html=True
         )
 
-COUNTRY_FLAGS = {
-    'AF':'1f1e6-1f1eb','AL':'1f1e6-1f1f1','DZ':'1f1e9-1f1ff','AR':'1f1e6-1f1f7',
-    'AU':'1f1e6-1f1fa','AT':'1f1e6-1f1f9','BD':'1f1e7-1f1e9','BR':'1f1e7-1f1f7',
-    'CA':'1f1e8-1f1e6','CN':'1f1e8-1f1f3','CO':'1f1e8-1f1f4','CU':'1f1e8-1f1fa',
-    'EG':'1f1ea-1f1ec','FR':'1f1eb-1f1f7','DE':'1f1e9-1f1ea','GB':'1f1ec-1f1e7',
-    'HK':'1f1ed-1f1f0','IN':'1f1ee-1f1f3','IR':'1f1ee-1f1f7','IQ':'1f1ee-1f1f6',
-    'JP':'1f1ef-1f1f5','KP':'1f1f0-1f1f5','KR':'1f1f0-1f1f7','LB':'1f1f1-1f1e7',
-    'MY':'1f1f2-1f1fe','MX':'1f1f2-1f1fd','NG':'1f1f3-1f1ec','PK':'1f1f5-1f1f0',
-    'RU':'1f1f7-1f1fa','SA':'1f1f8-1f1e6','ZA':'1f1ff-1f1e6','SE':'1f1f8-1f1ea',
-    'SY':'1f1f8-1f1fe','TR':'1f1f9-1f1f7','AE':'1f1e6-1f1ea','US':'1f1fa-1f1f8',
-    'VE':'1f1fb-1f1ea',
-}
+def generate_case_pdf(row, audit_events):
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=20)
+
+    pw = pdf.w - pdf.l_margin - pdf.r_margin
+
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(44, 2, 16)
+    pdf.cell(pw, 10, "ARGUS - Case Report", align="C", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(2)
+    pdf.set_draw_color(239, 235, 235)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + pw, pdf.get_y())
+    pdf.ln(6)
+
+    disp_label = STATUS_LABELS.get(row.get('STATUS', ''), row.get('STATUS', ''))
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.cell(pw, 8, str(row.get('ENTITY_NAME', 'N/A')), new_x="LMARGIN", new_y="NEXT")
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(82, 67, 70)
+    pdf.cell(pw, 6, "Status: " + disp_label + "   |   Risk Score: " + str(row.get('RISK_SCORE', 'N/A')) + "%", new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
+
+    fields = [
+        ("Case ID", str(row.get('ID', 'N/A'))),
+        ("Entity Type", str(row.get('TYPE', 'N/A'))),
+        ("Country", str(row.get('COUNTRY', 'N/A'))),
+        ("Date of Birth", str(row.get('DOB', 'N/A'))),
+        ("Place of Birth", str(row.get('POB', 'N/A'))),
+        ("Source System", str(row.get('SOURCE_SYSTEM', 'N/A'))),
+        ("Screened At", str(row.get('SCREENED_AT', 'N/A'))[:19]),
+    ]
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(44, 2, 16)
+    pdf.cell(pw, 8, "Case Details", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_draw_color(239, 235, 235)
+
+    for label, val in fields:
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(140, 124, 131)
+        pdf.cell(50, 6, label)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(26, 28, 29)
+        pdf.cell(pw - 50, 6, val, new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(6)
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(44, 2, 16)
+    pdf.cell(pw, 8, "Match Comparison", new_x="LMARGIN", new_y="NEXT")
+
+    col_w = [pw * 0.2, pw * 0.28, pw * 0.28, pw * 0.24]
+    headers = ["Attribute", "Screened Data", "Sanctions Match", "Status"]
+    pdf.set_font("Helvetica", "B", 8)
+    pdf.set_text_color(82, 67, 70)
+    pdf.set_fill_color(248, 245, 245)
+    for i, h in enumerate(headers):
+        pdf.cell(col_w[i], 7, h, border=0, fill=True)
+    pdf.ln()
+
+    comparison_data = [
+        ("Full Name", str(row.get('ENTITY_NAME', 'N/A')), str(row.get('MATCHED_ENTITY_NAME', 'N/A') or 'N/A')),
+        ("Date of Birth", str(row.get('DOB', 'N/A')), str(row.get('MATCHED_DOB', 'N/A') or 'N/A')),
+        ("Country", str(row.get('COUNTRY', 'N/A')), str(row.get('MATCHED_COUNTRY', 'N/A') or 'N/A')),
+        ("Place of Birth", str(row.get('POB', 'N/A')), str(row.get('MATCHED_POB', 'N/A') or 'N/A')),
+    ]
+
+    score_map = {
+        "Full Name": row.get('NAME_SIMILARITY_SCORE', 0) or 0,
+        "Date of Birth": row.get('DOB_SCORE', 0) or 0,
+        "Country": row.get('COUNTRY_SCORE', 0) or 0,
+        "Place of Birth": row.get('POB_SCORE', 0) or 0,
+    }
+
+    pdf.set_font("Helvetica", "", 8)
+    for attr, screened, matched in comparison_data:
+        sc = score_map.get(attr, 0)
+        stat = "MATCH" if sc >= 0.85 else ("PARTIAL" if sc >= 0.5 else "MISMATCH")
+        pdf.set_text_color(26, 28, 29)
+        pdf.cell(col_w[0], 6, attr)
+        pdf.set_text_color(82, 67, 70)
+        pdf.cell(col_w[1], 6, screened[:35])
+        pdf.set_text_color(26, 28, 29)
+        pdf.cell(col_w[2], 6, matched[:35])
+        if stat == "MATCH":
+            pdf.set_text_color(0, 78, 95)
+        else:
+            pdf.set_text_color(76, 69, 71)
+        pdf.cell(col_w[3], 6, stat, new_x="LMARGIN", new_y="NEXT")
+
+    pdf.ln(6)
+
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.set_text_color(44, 2, 16)
+    pdf.cell(pw, 8, "Score Breakdown", new_x="LMARGIN", new_y="NEXT")
+
+    scores = [
+        ("Name Similarity", row.get('NAME_SIMILARITY_SCORE', 0) or 0),
+        ("DOB", row.get('DOB_SCORE', 0) or 0),
+        ("Country", row.get('COUNTRY_SCORE', 0) or 0),
+        ("Place of Birth", row.get('POB_SCORE', 0) or 0),
+        ("Composite", row.get('COMPOSITE_SCORE', 0) or 0),
+    ]
+    bar_max_w = pw * 0.55
+    for s_name, s_val in scores:
+        pct = round(s_val * 100, 1)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(26, 28, 29)
+        pdf.cell(55, 6, s_name)
+        x_bar = pdf.get_x()
+        y_bar = pdf.get_y() + 1.5
+        pdf.set_fill_color(232, 221, 223)
+        pdf.rect(x_bar, y_bar, bar_max_w, 3, "F")
+        if pct >= 85:
+            pdf.set_fill_color(229, 62, 62)
+        elif pct >= 50:
+            pdf.set_fill_color(245, 124, 0)
+        else:
+            pdf.set_fill_color(56, 161, 105)
+        pdf.rect(x_bar, y_bar, bar_max_w * (pct / 100), 3, "F")
+        pdf.set_x(x_bar + bar_max_w + 4)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.cell(20, 6, str(pct) + "%", new_x="LMARGIN", new_y="NEXT")
+
+    ai_val = str(row.get('AI_DECISION') or '').strip()
+    ai_reasoning = str(row.get('AI_REASONING') or '').strip()
+    if ai_val and ai_reasoning:
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(44, 2, 16)
+        pdf.cell(pw, 8, "AI Decision: " + ai_val, new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(26, 28, 29)
+        pdf.multi_cell(pw, 5, ai_reasoning[:500])
+
+    if audit_events:
+        pdf.ln(4)
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(44, 2, 16)
+        pdf.cell(pw, 8, "Activity Log", new_x="LMARGIN", new_y="NEXT")
+        for ev in audit_events:
+            ts = ev['timestamp']
+            if isinstance(ts, str):
+                ts_str = ts[:16]
+            elif hasattr(ts, 'strftime'):
+                ts_str = ts.strftime('%Y-%m-%d %H:%M')
+            else:
+                ts_str = str(ts)[:16]
+            pdf.set_font("Helvetica", "B", 9)
+            pdf.set_text_color(44, 2, 16)
+            pdf.cell(pw, 5, ev['title'], new_x="LMARGIN", new_y="NEXT")
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(82, 67, 70)
+            pdf.cell(pw, 4, ev['user'] + "  |  " + ts_str, new_x="LMARGIN", new_y="NEXT")
+            if ev.get('detail'):
+                pdf.set_text_color(26, 28, 29)
+                pdf.multi_cell(pw, 4, str(ev['detail'])[:300])
+            pdf.ln(2)
+
+    pdf.ln(6)
+    pdf.set_draw_color(239, 235, 235)
+    pdf.line(pdf.l_margin, pdf.get_y(), pdf.l_margin + pw, pdf.get_y())
+    pdf.ln(4)
+    pdf.set_font("Helvetica", "I", 7)
+    pdf.set_text_color(140, 124, 131)
+    pdf.cell(pw, 4, "Generated by Argus Compliance Platform  |  " + datetime.now().strftime('%Y-%m-%d %H:%M UTC'), align="C")
+
+    buf = BytesIO()
+    pdf.output(buf)
+    buf.seek(0)
+    return buf.getvalue()
+
+def _country_flag_code(iso2):
+    if not iso2 or len(iso2) != 2 or not iso2.isalpha():
+        return '1f3f3-fe0f'
+    a, b = iso2.upper()
+    return f"{0x1F1E6 + ord(a) - ord('A'):x}-{0x1F1E6 + ord(b) - ord('A'):x}"
 
 STATUS_LABELS = {
     'CRITICAL_MATCH': 'Critical Match',
     'PENDING_HUMAN_REVIEW': 'Review Required',
     'AUTO_DISMISSED': 'Auto-Dismissed',
+    'HUMAN_DISMISSED': 'Human-Dismissed',
     'NO_MATCH': 'No Match',
     'DISMISS_OVERRIDDEN': 'Dismiss Overridden',
 }
@@ -130,6 +299,7 @@ STATUS_BG = {
     'CRITICAL_MATCH': '#ffdad6',
     'PENDING_HUMAN_REVIEW': '#fff3e0',
     'AUTO_DISMISSED': '#b3ebff',
+    'HUMAN_DISMISSED': '#d4edda',
     'NO_MATCH': '#e8e8e8',
     'DISMISS_OVERRIDDEN': '#fff3e0',
 }
@@ -138,6 +308,7 @@ STATUS_FG = {
     'CRITICAL_MATCH': '#93000a',
     'PENDING_HUMAN_REVIEW': '#e65100',
     'AUTO_DISMISSED': '#004e5f',
+    'HUMAN_DISMISSED': '#155724',
     'NO_MATCH': '#4c4547',
     'DISMISS_OVERRIDDEN': '#e65100',
 }
@@ -219,21 +390,28 @@ if selected_case is not None:
     with det_col1:
         st.markdown(f"""
             <div style='display:flex; align-items:center; gap: 16px; margin-top: 12px; color: #524346; font-size: 14px;'>
-                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>fingerprint</span> <b>ID:</b> {row['ID'][:18]}...</div>
+                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>fingerprint</span> <b>ID:</b> {row['ID']}</div>
                 <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>location_on</span> <b>Country:</b> {row['COUNTRY']}</div>
                 <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>calendar_today</span> <b>DOB:</b> {row['DOB']}</div>
             </div>
         """, unsafe_allow_html=True)
 
     with det_col2:
+        audit_events_for_pdf = fetch_case_audit_trail(case_id, row.get('SCREENING_REQUEST_ID', ''), row)
+        pdf_bytes = generate_case_pdf(row, audit_events_for_pdf)
         btn_col1, btn_col2 = st.columns([1, 1])
         with btn_col1:
             if st.button("Share Case", icon=":material/share:", use_container_width=True):
                 st.toast("Case link copied to clipboard!")
         with btn_col2:
-            if st.button("Export PDF", icon=":material/print:", use_container_width=True):
-                import streamlit.components.v1 as components
-                components.html("<script>window.parent.print()</script>", height=0)
+            st.download_button(
+                "Export PDF",
+                data=pdf_bytes,
+                file_name=f"case_{case_id}.pdf",
+                mime="application/pdf",
+                icon=":material/print:",
+                use_container_width=True,
+            )
 
     st.markdown(f"""
         <div style='display:flex; align-items:center; gap: 0px; margin-top: 16px; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid #EFEBEB;'>
@@ -254,7 +432,7 @@ if selected_case is not None:
 
     with col_left:
         with st.container(border=True):
-            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Match Comparison</h4><span style='font-size:10px; font-weight:600; color:#524346; letter-spacing: 0.5px; text-transform: uppercase;'>Source: {}</span></div>".format(row.get('MATCHED_LIST_ABBREVIATION', 'N/A') or 'N/A'), unsafe_allow_html=True)
+            st.markdown("<div style='margin-bottom: 24px;'><h4 style='margin:0;'>Match Comparison</h4></div>", unsafe_allow_html=True)
 
             comparison_data = [
                 ("Full Name", row['ENTITY_NAME'], row.get('MATCHED_ENTITY_NAME', 'N/A') or 'N/A',
@@ -307,7 +485,7 @@ if selected_case is not None:
                 ("Place of Birth", row.get('POB_SCORE', 0) or 0),
                 ("Composite", row.get('COMPOSITE_SCORE', 0) or 0),
             ]
-            score_html = "<div style='display:flex; flex-direction:column; gap:12px;'>"
+            score_html = "<div style='display:flex; flex-direction:column; gap:12px; padding-bottom:8px;'>"
             for s_name, s_val in scores:
                 pct = round(s_val * 100, 1)
                 bar_color = "#E53E3E" if pct >= 85 else ("#f57c00" if pct >= 50 else "#38A169")
@@ -348,12 +526,12 @@ if selected_case is not None:
                 </div>
                 """, unsafe_allow_html=True)
             with rc2:
-                decision = st.selectbox("Decision", ["Cleared", "Escalate", "Reject & Block"], label_visibility="collapsed")
+                decision = st.selectbox("Decision", ["Clear", "Escalate"], label_visibility="collapsed")
             with rc3:
                 submit_review = st.form_submit_button("Submit Review", type="primary", use_container_width=True)
 
             if submit_review:
-                disposition_map = {"Cleared": "AUTO_DISMISSED", "Escalate": "PENDING_HUMAN_REVIEW", "Reject & Block": "CRITICAL_MATCH"}
+                disposition_map = {"Clear": "HUMAN_DISMISSED", "Escalate": "CRITICAL_MATCH"}
                 new_disp = disposition_map[decision]
                 rationale = (new_note.strip() if new_note.strip() else "No additional rationale provided.").replace("'", "''")
 
@@ -378,7 +556,8 @@ if selected_case is not None:
 
     with col_right:
         ai_val_display = str(row.get('AI_DECISION') or '').strip()
-        if ai_val_display and ai_val_display.upper() != 'NONE' and pd.notna(row.get('AI_DECISION')):
+        ai_reasoning_display = str(row.get('AI_REASONING') or '').strip()
+        if ai_val_display and ai_reasoning_display:
             with st.container(border=True):
                 ai_title = f"AI Decision: {row['AI_DECISION']}"
                 ai_desc = row.get('AI_REASONING', '') or 'No reasoning provided.'
@@ -425,13 +604,13 @@ else:
            OR r.SCREENED_AT >= DATEADD('day', -7, CURRENT_TIMESTAMP())
         ORDER BY r.COMPOSITE_SCORE DESC
     """).to_pandas()
-    cases_df['FLAG_URL'] = cases_df['COUNTRY'].map(COUNTRY_FLAGS).fillna('1f3f3-fe0f') + '.png'
+    cases_df['FLAG_URL'] = cases_df['COUNTRY'].apply(_country_flag_code) + '.png'
 
     st.title("Case Management")
 
     total = len(cases_df)
     pending = len(cases_df[cases_df['STATUS'].isin(['PENDING_HUMAN_REVIEW', 'CRITICAL_MATCH'])])
-    dismissed = len(cases_df[cases_df['STATUS'] == 'AUTO_DISMISSED'])
+    dismissed = len(cases_df[cases_df['STATUS'].isin(['AUTO_DISMISSED', 'HUMAN_DISMISSED'])])
     no_match = len(cases_df[cases_df['STATUS'] == 'NO_MATCH'])
 
     col1, col2, col3, col4 = st.columns(4)
@@ -440,7 +619,7 @@ else:
     with col2:
         st.metric("Pending Review", pending, delta_color="inverse")
     with col3:
-        st.metric("Auto-Dismissed", dismissed, delta_color="normal")
+        st.metric("Dismissed", dismissed, delta_color="normal")
     with col4:
         st.metric("No Match", no_match)
 
