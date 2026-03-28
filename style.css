@@ -12,8 +12,23 @@
     --argus-accent-light: #f3f3f5;
 }
 
+/* Dark mode overrides: Use Streamlit variables where possible to inherit app theme */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --argus-bg: #1A1A1A;
+        /* Slightly lighter than pure black for depth */
+        --argus-card-bg: #262626;
+        --argus-border: #333333;
+        --argus-text-dark: #FFFFFF;
+        --argus-text-muted: #BDBDBD;
+        --argus-accent-light: #2D2D2D;
+    }
+}
+
 /* 2. White-labeling: Hide only Deploy and Menu, keeping header clean but functional */
-[data-testid="stAppDeployButton"], [data-testid="stMainMenu"], [data-testid="stToolbarActions"] {
+[data-testid="stAppDeployButton"],
+[data-testid="stMainMenu"],
+[data-testid="stToolbarActions"] {
     display: none !important;
 }
 
@@ -38,7 +53,8 @@ div[data-testid="stVerticalBlock"]:has(#argus-topbar) {
     position: sticky;
     top: 2rem;
     z-index: 1000;
-    background-color: var(--st-background-color, var(--argus-bg));
+    background-color: var(--argus-bg);
+    /* Use our custom variable instead of native only */
     padding-bottom: 1rem;
     margin-bottom: -1rem;
 }
@@ -55,10 +71,15 @@ button {
 
 /* Specific styling for the Search Bar input */
 [data-testid="stTextInput"] input {
-    background-color: #F8F5F5 !important;
+    background-color: var(--argus-accent-light) !important;
     border: none !important;
     border-radius: 20px !important;
     font-size: 14px !important;
+    color: var(--argus-text-dark) !important;
+}
+
+[data-testid="stTextInput"] input::placeholder {
+    color: var(--argus-text-muted) !important;
 }
 
 /* Card metrics specific styling if needed, mainly relying on Streamlit's native metrics container */
@@ -74,9 +95,9 @@ button {
 
 /* Top bar specific styling so search bar is right aligned natively */
 .topbar-profile {
-    display: flex; 
-    align-items: center; 
-    justify-content: flex-end; 
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     gap: 16px;
     margin-top: -6px;
 }
@@ -102,15 +123,15 @@ button {
 }
 
 .topbar-avatar {
-    background-color: #2D1A22; 
-    color: white; 
-    border-radius: 50%; 
-    width: 44px; 
-    height: 44px; 
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    font-size: 16px; 
+    background-color: #2D1A22;
+    color: white;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 16px;
     font-weight: bold;
 }
 
@@ -143,11 +164,12 @@ button {
 
 /* Print Styles */
 @media print {
+
     /* Hide ALL navigation and UI chrome */
     [data-testid="stSidebar"],
     [data-testid="stHeader"],
     div[data-testid="stVerticalBlock"]:has(#argus-topbar),
-    .stApp > header,
+    .stApp>header,
     footer,
     section.sidebar,
     .nav-breadcrumbs,
@@ -171,13 +193,15 @@ button {
 
 /* Sidebar Navigation Size Increase */
 [data-testid="stSidebarNav"] [data-testid="stSidebarNavItems"] p {
-    font-size: 1.25rem !important; /* 1.5x larger than default */
+    font-size: 1.25rem !important;
+    /* 1.5x larger than default */
     font-weight: 500 !important;
     line-height: 1.4 !important;
 }
 
 [data-testid="stSidebarNav"] [data-testid="stSidebarNavItems"] span[data-testid="stIconMaterial"] {
-    font-size: 1.5rem !important; /* 1.5x larger */
+    font-size: 1.5rem !important;
+    /* 1.5x larger */
 }
 
 /* Increase spacing between large nav items */
@@ -187,27 +211,29 @@ button {
 }
 
 /* Global Card Border Radius Consistency */
-[data-testid="stVerticalBlockBorderWrapper"], 
+[data-testid="stVerticalBlockBorderWrapper"],
 [data-testid="stForm"],
 div[data-testid="stMetric"] {
     border-radius: 12px !important;
 }
 
 /* Specific inner containers within the block wrapper */
-div[data-testid="stVerticalBlockBorderWrapper"] > div {
+div[data-testid="stVerticalBlockBorderWrapper"]>div {
     border-radius: 12px !important;
 }
 
 /* Ensure the decision form and investigative cards follow the rule */
 [data-testid="stVerticalBlockBorderWrapper"] {
-    border: 1px solid #EFEBEB !important;
+    border: 1px solid var(--argus-border) !important;
     border-radius: 12px !important;
+    background-color: var(--argus-card-bg) !important;
 }
 
 /* Investigative Workload Spacing Consistency */
-[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"],
+[data-testid="stVerticalBlockBorderWrapper"]>div[data-testid="stVerticalBlock"],
 [data-testid="stForm"] {
-    padding: 24px !important; /* Uniform padding inside cards */
+    padding: 24px !important;
+    /* Uniform padding inside cards */
 }
 
 /* Bottom margins between cards */

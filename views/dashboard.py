@@ -99,19 +99,19 @@ with st.container(border=True):
 <div style="display: flex; flex-direction: column; width: 40%;">
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
 <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width: 24px; height: 24px;" alt="Flag" />
-<span style="font-weight: 700; font-size: 16px; color: #1a1c1d;">{row['ENTITY_NAME']}</span>
+<span style="font-weight: 700; font-size: 16px; color: var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
 </div>
-<span style="font-size: 11px; color: #8C7C83; font-weight: 700; letter-spacing: 0.5px; margin-left: 36px;">{row['TYPE']}</span>
+<span style="font-size: 11px; color: var(--argus-text-muted); font-weight: 700; letter-spacing: 0.5px; margin-left: 36px;">{row['TYPE']}</span>
 </div>
 <div style="width: 25%;">
-<div style="font-size: 10px; font-weight: 700; color: #524346; margin-bottom: 6px;">RISK SCORE: {row['RISK_SCORE']:.1f}</div>
-<div style="width: 100%; height: 6px; background-color: #f3f3f5; border-radius: 3px; overflow: hidden;">
-<div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: #4A192C; border-radius: 3px;"></div>
+<div style="font-size: 10px; font-weight: 700; color: var(--argus-text-muted); opacity: 0.8; margin-bottom: 6px;">RISK SCORE: {row['RISK_SCORE']:.1f}</div>
+<div style="width: 100%; height: 6px; background-color: var(--argus-accent-light); border-radius: 3px; overflow: hidden;">
+<div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: var(--argus-primary); border-radius: 3px;"></div>
 </div>
 </div>
 <div style="width: 15%;">
-<div style="font-size: 10px; font-weight: 700; color: #8C7C83; margin-bottom: 2px;">AI CONFIDENCE</div>
-<div style="font-weight: 700; font-size: 14px; color: #1a1c1d;">{row['AI_CONFIDENCE']}</div>
+<div style="font-size: 10px; font-weight: 700; color: var(--argus-text-muted); margin-bottom: 2px;">AI CONFIDENCE</div>
+<div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
 <span style="background-color: {color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-block;">{row['STATUS']}</span>

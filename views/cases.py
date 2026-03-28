@@ -139,18 +139,18 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
 <th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Status</th>
 </tr>
 </thead>
-<tbody style="background-color: #ffffff;">"""
+<tbody style="background-color: var(--argus-card-bg);">"""
                 for idx, h_row in wl_hits_df.iterrows():
                     match_stat = h_row['MATCH_STATUS']
                     bg_col = "#b3ebff" if match_stat == "MATCH" else ("#cfc4c6" if match_stat == "MISMATCH" else "#e8dddf")
                     txt_col = "#001f27" if match_stat == "MATCH" else "#4c4547"
                     # Lighter borders for a cleaner look
-                    bb_style = 'border-bottom: 1px solid #F3F1F1;' if idx < len(wl_hits_df) - 1 else ''
+                    bb_style = f'border-bottom: 1px solid var(--argus-border);' if idx < len(wl_hits_df) - 1 else ''
                     table_html += f"""
 <tr style="{bb_style}">
-<td style="padding: 16px 24px; font-weight: 600; font-size: 14px; color: #1a1c1d;">{h_row['ATTRIBUTE']}</td>
-<td style="padding: 16px 24px; font-size: 14px; color: #524346;">{h_row['SUBJECT_DATA']}</td>
-<td style="padding: 16px 24px; font-weight: 700; font-size: 14px; color: #2c0210;">{h_row['WATCHLIST_DATA']}</td>
+<td style="padding: 16px 24px; font-weight: 600; font-size: 14px; color: var(--argus-text-dark);">{h_row['ATTRIBUTE']}</td>
+<td style="padding: 16px 24px; font-size: 14px; color: var(--argus-text-muted);">{h_row['SUBJECT_DATA']}</td>
+<td style="padding: 16px 24px; font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{h_row['WATCHLIST_DATA']}</td>
 <td style="padding: 16px 24px;"><span style="background-color: {bg_col}; color: {txt_col}; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">{match_stat}</span></td>
 </tr>"""
                 table_html += """</tbody>
@@ -391,18 +391,18 @@ else:
 <div style="display: flex; flex-direction: column; width: 40%;">
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2px;">
 <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width: 20px; height: 20px;" alt="Flag" />
-<span style="font-weight: 600; font-size: 15px; color: #1a1c1d;">{row['ENTITY_NAME']}</span>
+<span style="font-weight: 600; font-size: 15px; color: var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
 </div>
-<span style="font-size: 10px; color: #8C7C83; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 32px;">{row['TYPE']}</span>
+<span style="font-size: 10px; color: var(--argus-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 32px;">{row['TYPE']}</span>
 </div>
 <div style="width: 25%;">
-<div style="width: 100%; max-width: 140px; height: 6px; background-color: #f3f3f5; border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
-<div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: #4A192C; border-radius: 3px;"></div>
+<div style="width: 100%; max-width: 140px; height: 6px; background-color: var(--argus-accent-light); border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
+<div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: var(--argus-primary); border-radius: 3px;"></div>
 </div>
-<div style="font-size: 11px; font-weight: 700; color: #524346;">{row['RISK_SCORE']:.1f}</div>
+<div style="font-size: 11px; font-weight: 700; color: var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
 </div>
 <div style="width: 15%;">
-<div style="font-weight: 700; font-size: 14px; color: #1a1c1d;">{row['AI_CONFIDENCE']}</div>
+<div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
 <span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block;">{row['STATUS']}</span>

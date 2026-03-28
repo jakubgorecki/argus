@@ -19,24 +19,24 @@ def render_topbar():
     with col_profile:
         st.markdown("""
             <div style='display:flex; justify-content:flex-end; align-items:center; gap:20px;'>
-                <div style='display:flex; align-items:center; gap:16px; color:#4A5568;'>
+                <div style='display:flex; align-items:center; gap:16px; color:var(--argus-text-muted);'>
                     <span class='material-symbols-rounded' style='font-size:26px;'>check_circle</span>
                     <div style='position:relative; display:flex; align-items:center;'>
                         <span class='material-symbols-rounded' style='font-size:26px;'>notifications</span>
-                        <div style='position:absolute; top:2px; right:2px; width:8px; height:8px; background-color:#E53E3E; border-radius:50%; border:1px solid #FFF;'></div>
+                        <div style='position:absolute; top:2px; right:2px; width:8px; height:8px; background-color:#E53E3E; border-radius:50%; border:1px solid var(--argus-card-bg);'></div>
                     </div>
                     <span class='material-symbols-rounded' style='font-size:26px;'>help</span>
                 </div>
-                <div style='border-left:1px solid #EFEBEB; height:32px;'></div>
+                <div style='border-left:1px solid var(--argus-border); height:32px;'></div>
                 <div style='text-align:right; display:flex; flex-direction:column; justify-content:center;'>
-                    <div style='font-weight:700; font-size:14px; color:#2D1A22; padding-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;'>Julian Thome</div>
-                    <div style='font-size:10px; color:#8C7C83; font-weight:600; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;'>SENIOR COMPLIANCE</div>
+                    <div style='font-weight:700; font-size:14px; color:var(--argus-text-dark); padding-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;'>Julian Thome</div>
+                    <div style='font-size:10px; color:var(--argus-text-muted); font-weight:600; letter-spacing:0.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:200px;'>SENIOR COMPLIANCE</div>
                 </div>
-                <img src='https://res.cloudinary.com/yevhenii-kalashnyk/image/upload/ar_1:1,c_crop,g_face,z_0.9/IMG_9012_what0m.jpg' style='width:36px; height:36px; min-width:36px; min-height:36px; flex-shrink:0; border-radius:50%; object-fit:cover; border:1px solid #2D1A22;'>
+                <img src='https://res.cloudinary.com/yevhenii-kalashnyk/image/upload/ar_1:1,c_crop,g_face,z_0.9/IMG_9012_what0m.jpg' style='width:36px; height:36px; min-width:36px; min-height:36px; flex-shrink:0; border-radius:50%; object-fit:cover; border:1px solid var(--argus-border);'>
             </div>
         """, unsafe_allow_html=True)
         
-    st.markdown("<hr style='margin-top: 8px; margin-bottom: 24px; border-top: 1px solid #EFEBEB;'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='margin-top: 8px; margin-bottom: 24px; border-top: 1px solid var(--argus-border);'/>", unsafe_allow_html=True)
 
 def render_breadcrumbs(path_data):
     if isinstance(path_data, str):
@@ -45,14 +45,14 @@ def render_breadcrumbs(path_data):
     html_parts = []
     for title, link in path_data:
         if link:
-            html_parts.append(f"<a href='{link}' target='_self' style='color: #8C7C83; text-decoration: none; font-weight: 600; padding: 0px 4px;'>{title}</a>")
+            html_parts.append(f"<a href='{link}' target='_self' style='color: var(--argus-text-muted); text-decoration: none; font-weight: 600; padding: 0px 4px;'>{title}</a>")
         else:
-            html_parts.append(f"<span style='color: #2D1A22; font-weight: 600; padding: 0px 4px;'>{title}</span>")
+            html_parts.append(f"<span style='color: var(--argus-text-dark); font-weight: 600; padding: 0px 4px;'>{title}</span>")
             
-    bc_html = "<span style='color: #8C7C83; font-size: 16px;'>›</span>".join(html_parts)
+    bc_html = f"<span style='color: var(--argus-text-muted); font-size: 16px;'>›</span>".join(html_parts)
     
     st.markdown(f"""
-    <div style="font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; color: #8C7C83; padding-left: 4px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
+    <div style="font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; color: var(--argus-text-muted); padding-left: 4px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
         {bc_html}
     </div>
     """, unsafe_allow_html=True)
