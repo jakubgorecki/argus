@@ -366,20 +366,15 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("""
-<div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
-    <div style="width: 38%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
-    <div style="width: 22%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
-    <div style="width: 13%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
-    <div style="width: 17%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
-    <div style="width: 10%;"></div>
-</div>
-""", unsafe_allow_html=True)
-
-    st.markdown("""
 <style>
+[data-testid="stHorizontalBlock"]:has(.case-row-container) {
+    gap: 0 !important;
+}
+[data-testid="stHorizontalBlock"]:has(.case-row-container) > [data-testid="stColumn"] {
+    padding: 0 !important;
+}
 .case-row-container .stButton button {
-    height: 100% !important;
-    min-height: 60px !important;
+    min-height: 62px !important;
     border: 1px solid #EFEBEB !important;
     border-left: none !important;
     border-radius: 0 8px 8px 0 !important;
@@ -388,12 +383,26 @@ else:
     font-size: 18px !important;
     font-weight: 600 !important;
     transition: all 0.2s ease !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 .case-row-container .stButton button:hover {
     background: #f3f3f5 !important;
     color: #4A192C !important;
 }
+.case-row-container .stButton {
+    margin: 0 !important;
+}
 </style>
+""", unsafe_allow_html=True)
+
+    st.markdown("""
+<div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
+    <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
+    <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
+    <div style="width: 14%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
+    <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+</div>
 """, unsafe_allow_html=True)
 
     if filtered_df.empty:
