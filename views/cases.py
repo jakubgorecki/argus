@@ -63,25 +63,42 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         """, unsafe_allow_html=True)
 
     with det_col2:
+        # Use a combination of st.button and custom CSS for a reliable print trigger
         st.markdown("""
         <style>
-        .icon-btn-container { border: 1px solid #EFEBEB; border-radius: 8px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease; background: white; white-space: nowrap; text-decoration: none !important; }
-        .icon-btn-container:hover { background: #fafafa; border-color: #d1d1d1; }
-        .icon-btn-text { font-size: 13px; font-weight: 600; color: #2c0210; }
+        div[data-testid="stHorizontalBlock"] .stButton > button {
+            background-color: white !important;
+            border: 1px solid #EFEBEB !important;
+            border-radius: 8px !important;
+            color: #2c0210 !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            padding: 8px 16px !important;
+            height: auto !important;
+            width: auto !important;
+            transition: all 0.2s ease !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 8px !important;
+        }
+        div[data-testid="stHorizontalBlock"] .stButton > button:hover {
+            background-color: #fafafa !important;
+            border-color: #d1d1d1 !important;
+        }
         </style>
-        <div style='display:flex; gap: 8px; justify-content:flex-end; align-items:center; margin-top: 12px;'>
-            <div class="icon-btn-container" title="Share Case">
-                <span class='material-symbols-rounded' style='font-size:18px; color:#2c0210;'>share</span>
-                <span class="icon-btn-text">Share Case</span>
-            </div>
-            <div class="icon-btn-container" onclick="window.print()" title="Export PDF">
-                <span class='material-symbols-rounded' style='font-size:18px; color:#2c0210;'>print</span>
-                <span class="icon-btn-text">Export PDF</span>
-            </div>
-        </div>
         """, unsafe_allow_html=True)
+        
+        btn_col1, btn_col2 = st.columns([1, 1])
+        with btn_col1:
+            if st.button("Share Case", icon=":material/share:", use_container_width=True):
+                st.toast("Case link copied to clipboard!")
+        with btn_col2:
+            if st.button("Export PDF", icon=":material/print:", use_container_width=True):
+                import streamlit.components.v1 as components
+                # Triggers the browser print dialog natively in the parent window
+                components.html("<script>window.parent.print()</script>", height=0)
 
-    # Client & Product Row
+    # Client & Product Row (re-positioned for layout flow)
     st.markdown(f"""
         <div style='display:flex; align-items:center; gap: 0px; margin-top: 16px; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid #EFEBEB;'>
             <div style='display:flex; align-items:center; gap:8px; padding-right: 20px; border-right: 1px solid #EFEBEB;'>
@@ -110,9 +127,11 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Watchlist Hit Details</h4><span style='font-size:10px; font-weight:600; color:#524346; letter-spacing: 0.5px; text-transform: uppercase;'>Source: World-Check Global</span></div>", unsafe_allow_html=True)
             
             if not wl_hits_df.empty:
-                table_html = """<div style="border-radius: 8px; overflow-x: auto; border: 1px solid #EFEBEB; width: 100%;">
-<table style="width: 100%; text-align: left; border-collapse: collapse; font-family: 'Inter', sans-serif; min-width: 600px;">
-<thead style="background-color: #f3f3f5; border-bottom: 1px solid #EFEBEB;">
+                # Removed internal border and adjusted margin to integrate better with the parent card
+                # Enhanced table aesthetics for seamless card integration
+                table_html = """<div style="overflow-x: auto; width: 100%; margin-bottom: 24px;">
+<table style="width: 100%; text-align: left; border-collapse: collapse; font-family: 'Inter', sans-serif; min-width: 600px; border: none;">
+<thead style="border-bottom: 2px solid #EFEBEB;">
 <tr>
 <th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Attribute</th>
 <th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Subject Data</th>
@@ -125,7 +144,8 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                     match_stat = h_row['MATCH_STATUS']
                     bg_col = "#b3ebff" if match_stat == "MATCH" else ("#cfc4c6" if match_stat == "MISMATCH" else "#e8dddf")
                     txt_col = "#001f27" if match_stat == "MATCH" else "#4c4547"
-                    bb_style = 'border-bottom: 1px solid #EFEBEB;' if idx < len(wl_hits_df) - 1 else ''
+                    # Lighter borders for a cleaner look
+                    bb_style = 'border-bottom: 1px solid #F3F1F1;' if idx < len(wl_hits_df) - 1 else ''
                     table_html += f"""
 <tr style="{bb_style}">
 <td style="padding: 16px 24px; font-weight: 600; font-size: 14px; color: #1a1c1d;">{h_row['ATTRIBUTE']}</td>
@@ -138,7 +158,7 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
 </div>"""
                 st.markdown(table_html, unsafe_allow_html=True)
             else:
-                st.markdown("<div style='padding:16px; background-color:#f3f3f5; border-radius:8px; font-size:14px; color:#524346;'>No watchlist attributes flagged for this entity.</div>", unsafe_allow_html=True)
+                st.markdown("<div style='padding:24px; background-color:#f3f3f5; border-radius:12px; font-size:14px; color:#524346; margin: 8px 0 24px 0;'>No watchlist attributes flagged for this entity.</div>", unsafe_allow_html=True)
 
         # 2. Evidence & Files Card
         with st.container(border=True):
@@ -146,8 +166,7 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             ev_df = pd.read_sql(f"SELECT * FROM evidence_files WHERE CASE_ID = '{case_id}'", conn_ev)
             conn_ev.close()
             
-            st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center;'><h4 style='margin:0;'>Evidence & Files</h4><span style='background-color:#e8dddf; color:#696163; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;'>{len(ev_df)} FILES</span></div>", unsafe_allow_html=True)
-            st.divider()
+            st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Evidence & Files</h4><span style='background-color:#e8dddf; color:#696163; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;'>{len(ev_df)} FILES</span></div>", unsafe_allow_html=True)
             
             # Show files in a horizontal flex grid
             grid_html = "<div style='display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;'>"
@@ -177,26 +196,30 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             history_df = pd.read_sql(f"SELECT * FROM decision_history WHERE CASE_ID = '{case_id}' ORDER BY SORT_ORDER DESC", conn_hist)
             conn_hist.close()
             
-            timeline_parts = ["<div style='margin-left: 20px; border-left: 2px solid #e2e2e4; position: relative; padding-bottom: 4px; font-family: \"Inter\", sans-serif;'>"]
+            timeline_parts = ["<div style='margin-left: 20px; position: relative; padding: 24px 0 24px 0; font-family: \"Inter\", sans-serif;'>"]
             for idx, h_row in history_df.iterrows():
                 title = h_row['TITLE']
                 desc = h_row['DESCRIPTION']
                 date = h_row['TIMESTAMP']
                 dot_color = "#2c0210" if idx == 0 else "#e2e2e4" 
                 margin_bottom = "24px" if idx < len(history_df) - 1 else "0"
-                timeline_parts.append(f"""
-                <div style='position: relative; padding-left: 24px; margin-bottom: {margin_bottom};'>
-                    <div style='position: absolute; left: -9px; top: 0px; width: 16px; height: 16px; border-radius: 50%; background-color: {dot_color}; box-shadow: 0 0 0 4px #fff;'></div>
-                    <div style='display: flex; flex-direction: column;'>
-                        <span style='font-size: 10px; text-transform: uppercase; color: #524346; font-weight: 600; letter-spacing: 0.5px;'>{date}</span>
-                        <p style='margin: 4px 0 2px 0; font-size: 14px; font-weight: 600; color: #1a1c1d;'>{title}</p>
-                        <p style='margin: 0; font-size: 12px; color: #524346;'>{desc}</p>
-                    </div>
-                </div>
-                """)
+                
+                line_segment = ""
+                if idx < len(history_df) - 1:
+                    line_segment = f"<div style='position: absolute; left: -1px; top: 16px; bottom: -24px; border-left: 2px solid #e2e2e4;'></div>"
+                
+                # Single-line parts to avoid markdown interpretation issues
+                part_html = f"<div style='position: relative; padding-left: 24px; margin-bottom: {margin_bottom};'>{line_segment}"
+                part_html += f"<div style='position: absolute; left: -9px; top: 0px; width: 16px; height: 16px; border-radius: 50%; background-color: {dot_color}; box-shadow: 0 0 0 4px #fff;'></div>"
+                part_html += f"<div style='display: flex; flex-direction: column;'>"
+                part_html += f"<span style='font-size: 10px; text-transform: uppercase; color: #524346; font-weight: 600; letter-spacing: 0.5px;'>{date}</span>"
+                part_html += f"<p style='margin: 4px 0 2px 0; font-size: 14px; font-weight: 600; color: #1a1c1d;'>{title}</p>"
+                part_html += f"<p style='margin: 0; font-size: 12px; color: #524346;'>{desc}</p>"
+                part_html += "</div></div>"
+                timeline_parts.append(part_html)
+                
             timeline_parts.append("</div>")
-            # Join and strip extra whitespace to prevent markdown code block triggers
-            full_html = "".join([t.strip() for t in timeline_parts])
+            full_html = "".join(timeline_parts)
             st.markdown(full_html, unsafe_allow_html=True)
 
         # 4. Review Decision Form (Now inside col_left to match width)
@@ -287,61 +310,95 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Filters Row
+    # 1. Filtering Logic
     f_col1, f_col2, f_col3, f_col_empty, f_col4 = st.columns([2, 2, 2, 5, 3])
     with f_col1:
-        st.selectbox("Filters", ["All Statuses", "Requires Review", "In Progress"], label_visibility="collapsed")
+        status_filter = st.selectbox("Filters", ["All Statuses", "Pending Review", "Investigation", "AUTO-CLEARED"], label_visibility="collapsed")
     with f_col2:
-        st.selectbox("Risk", ["Risk: All Levels", "High", "Medium", "Low"], label_visibility="collapsed")
+        risk_filter = st.selectbox("Risk", ["Risk: All Levels", "High", "Medium", "Low"], label_visibility="collapsed")
     with f_col3:
-        st.selectbox("Entity", ["Entity: All", "Corporate", "Individual"], label_visibility="collapsed")
+        entity_filter = st.selectbox("Entity", ["Entity: All", "Corporate", "Individual"], label_visibility="collapsed")
     with f_col4:
         st.button("+ New Case", type="primary", use_container_width=True)
 
+    # Apply Filters to cases_df
+    filtered_df = cases_df.copy()
+    if status_filter != "All Statuses":
+        filtered_df = filtered_df[filtered_df['STATUS'] == status_filter]
+    
+    if risk_filter != "Risk: All Levels":
+        if risk_filter == "High": filtered_df = filtered_df[filtered_df['RISK_SCORE'] >= 70]
+        elif risk_filter == "Medium": filtered_df = filtered_df[(filtered_df['RISK_SCORE'] >= 30) & (filtered_df['RISK_SCORE'] < 70)]
+        elif risk_filter == "Low": filtered_df = filtered_df[filtered_df['RISK_SCORE'] < 30]
+        
+    if entity_filter != "Entity: All":
+        filtered_df = filtered_df[filtered_df['TYPE'] == entity_filter.upper()]
+
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Responsive Case HTML Interactive Anchor Cards 
+    # 2. Unified Table Header
+    st.markdown("""
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
+    <div style="width: 40%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
+    <div style="width: 25%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
+    <div style="width: 15%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">AI Confidence</div>
+    <div style="width: 15%; text-align: right; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+</div>
+""", unsafe_allow_html=True)
+
+    # 3. Compact Case Rows
     st.markdown("""
 <style>
-.case-card {
+.case-row {
     border: 1px solid #EFEBEB;
-    border-radius: 8px;
+    border-top: none; 
     padding: 16px 24px;
     background-color: #ffffff;
-    transition: box-shadow 0.2s ease, background-color 0.2s ease;
-    margin-bottom: 16px;
+    transition: all 0.2s ease;
     display: block;
     text-decoration: none !important;
     color: inherit !important;
 }
-.case-card:hover {
+.case-row:first-of-type {
+    border-top: 1px solid #EFEBEB;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+.case-row:last-of-type {
+    border-bottom-left-radius: 12px;
+    border-bottom-right-radius: 12px;
+}
+.case-row:hover {
     background-color: #fafafa;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transform: translateX(4px);
+    border-left: 4px solid #4A192C;
 }
 </style>
 """, unsafe_allow_html=True)
     
-    for idx, row in cases_df.iterrows():
-        color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
-        text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
-        
-        card_html = f"""<a href="?selected_case={row['ID']}" target="_self" class="case-card">
+    if filtered_df.empty:
+        st.info("No cases match the selected filters.")
+    else:
+        for idx, row in filtered_df.iterrows():
+            color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
+            text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
+            
+            card_html = f"""<a href="?selected_case={row['ID']}" target="_self" class="case-row">
 <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
 <div style="display: flex; flex-direction: column; width: 40%;">
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
-<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width: 24px; height: 24px;" alt="Flag" />
-<span style="font-weight: 700; font-size: 16px; color: #1a1c1d;">{row['ENTITY_NAME']}</span>
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2px;">
+<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width: 20px; height: 20px;" alt="Flag" />
+<span style="font-weight: 600; font-size: 15px; color: #1a1c1d;">{row['ENTITY_NAME']}</span>
 </div>
-<span style="font-size: 11px; color: #8C7C83; font-weight: 700; letter-spacing: 0.5px; margin-left: 36px;">{row['TYPE']}</span>
+<span style="font-size: 10px; color: #8C7C83; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 32px;">{row['TYPE']}</span>
 </div>
 <div style="width: 25%;">
-<div style="font-size: 10px; font-weight: 700; color: #524346; margin-bottom: 6px;">RISK SCORE: {row['RISK_SCORE']:.1f}</div>
-<div style="width: 100%; height: 6px; background-color: #f3f3f5; border-radius: 3px; overflow: hidden;">
+<div style="width: 100%; max-width: 140px; height: 6px; background-color: #f3f3f5; border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
 <div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: #4A192C; border-radius: 3px;"></div>
 </div>
+<div style="font-size: 11px; font-weight: 700; color: #524346;">{row['RISK_SCORE']:.1f}</div>
 </div>
 <div style="width: 15%;">
-<div style="font-size: 10px; font-weight: 700; color: #8C7C83; margin-bottom: 2px;">AI CONFIDENCE</div>
 <div style="font-weight: 700; font-size: 14px; color: #1a1c1d;">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
@@ -349,4 +406,4 @@ else:
 </div>
 </div>
 </a>"""
-        st.markdown(card_html, unsafe_allow_html=True)
+            st.markdown(card_html, unsafe_allow_html=True)

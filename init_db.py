@@ -217,6 +217,18 @@ def init_mock_db(db_path="argus.db"):
     })
     watchlist_hits_df.to_sql("watchlist_hits", conn, index=False)
     
+    # NEW: Employees/Compliance Officers Table
+    employees_df = pd.DataFrame({
+        "ID": [1, 2, 3],
+        "NAME": ["Sarah Jenkins", "Julian Thome", "Aisha Al-Hashimi"],
+        "AVATAR_URL": [
+            "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop",
+            "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop",
+            "https://res.cloudinary.com/demo/image/upload/w_100,h_100,c_fill,g_face/v1/couple.jpg" # Working Cloudinary photo
+        ]
+    })
+    employees_df.to_sql("employees", conn, index=False)
+    
     conn.commit()
     conn.close()
     print(f"Database initialized at {db_path} with mock data.")

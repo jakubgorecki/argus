@@ -38,21 +38,31 @@ with col_charts:
         st.bar_chart(df_chart, x="Day", y="Noise_Removed", color="#8C7C83", height=250)
 
 with col_metrics:
-    with st.container(border=True):
-        st.markdown("<h4 style='margin:0; color:#4A192C;'>Pending Review</h4>", unsafe_allow_html=True)
-        st.markdown("<div style='display:flex; justify-content:space-between; align-items:flex-start;'><h1 style='margin:0; padding:0; color:#4A192C;'>124</h1> <span class='material-symbols-rounded' style='color:#4A192C; font-size:24px; padding-top:8px;'>assignment_turned_in</span></div>", unsafe_allow_html=True)
-        st.caption("Priority cases awaiting officer verification.")
-        st.markdown("""
-            <div style='display:flex; margin-top:12px;'>
-                <div style="background:#2D1A22; color:white; width:28px; height:28px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:10px; margin-left:-0px; border:2px solid #FAFAFA;">AB</div>
-                <div style="background:#4A192C; color:white; width:28px; height:28px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:10px; margin-left:-8px; border:2px solid #FAFAFA;">CD</div>
-                <div style="background:#E53E3E; color:white; width:28px; height:28px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:10px; margin-left:-8px; border:2px solid #FAFAFA; font-weight:bold;">+8</div>
-            </div>
-        """, unsafe_allow_html=True)
+    # Custom "Pending Review" Card matching user screenshot
+    conn = get_db_connection()
+    employees_df = pd.read_sql("SELECT * FROM employees LIMIT 3", conn)
+    conn.close()
+    
+    avatar_html = ""
+    for idx, e_row in employees_df.iterrows():
+        ml = "-8px" if idx > 0 else "0px"
+        avatar_html += f"<img src='{e_row['AVATAR_URL']}' style='width:36px; height:36px; border-radius:50%; border:2px solid #4A192C; margin-left:{ml}; object-fit:cover;' />"
+    avatar_html += "<div style='background:#2D1A22; color:white; width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:11px; margin-left:-8px; border:2px solid #4A192C; font-weight:bold;'>+8</div>"
 
-    with st.container(border=True):
-        st.markdown("<h5 style='margin:0; margin-bottom: 8px;'><span class='material-symbols-rounded' style='font-size:18px; color:#4A192C; vertical-align:middle;'>bolt</span> Argus AI Insights</h5>", unsafe_allow_html=True)
-        st.write("Anomaly detected in Nordics settlement cluster. Velocity spike of 240% above baseline.")
+    st.markdown(f"""
+        <div style='background-color: #4A192C; padding: 32px; border-radius: 12px; color: white; font-family: "Inter", sans-serif; position: relative;'>
+            <div style='display: flex; justify-content: space-between; align-items: flex-start;'>
+                <h3 style='margin: 0; font-size: 24px; font-weight: 600; color: white;'>Pending Review</h3>
+                <span class='material-symbols-rounded' style='font-size: 32px; color: white;'>assignment_late</span>
+            </div>
+            <h1 style='margin: 16px 0 8px 0; font-size: 64px; font-weight: 700; color: white;'>124</h1>
+            <p style='margin: 0; font-size: 16px; color: #D3C9CB;'>Priority cases awaiting officer verification.</p>
+            <div style='display: flex; margin-top: 24px; align-items: center;'>
+                {avatar_html}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+    
 
 st.markdown("<br><br>", unsafe_allow_html=True)
 

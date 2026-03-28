@@ -117,21 +117,80 @@ button {
 
 /* Print Styles */
 @media print {
-    section[data-testid="stSidebar"],
-    div[data-testid="stHeader"],
+    /* Hide ALL navigation and UI chrome */
+    [data-testid="stSidebar"],
+    [data-testid="stHeader"],
     div[data-testid="stVerticalBlock"]:has(#argus-topbar),
-    .stApp > header {
+    .stApp > header,
+    footer,
+    section.sidebar,
+    .nav-breadcrumbs,
+    div[data-testid="stToolbar"] {
         display: none !important;
     }
 
+    /* Expand main content to fill page */
     .main .block-container {
         padding: 0 !important;
+        margin: 0 !important;
         max-width: 100% !important;
     }
 
-    /* Ensure background colors and colors are preserved in print */
+    /* Ensure specific investigative cards are not cut off and maintain colors */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
     }
+}
+
+/* Sidebar Navigation Size Increase */
+[data-testid="stSidebarNav"] [data-testid="stSidebarNavItems"] p {
+    font-size: 1.25rem !important; /* 1.5x larger than default */
+    font-weight: 500 !important;
+    line-height: 1.4 !important;
+}
+
+[data-testid="stSidebarNav"] [data-testid="stSidebarNavItems"] span[data-testid="stIconMaterial"] {
+    font-size: 1.5rem !important; /* 1.5x larger */
+}
+
+/* Increase spacing between large nav items */
+[data-testid="stSidebarNav"] [data-testid="stSidebarNavItems"] li {
+    padding-top: 4px !important;
+    padding-bottom: 4px !important;
+}
+
+/* Global Card Border Radius Consistency */
+[data-testid="stVerticalBlockBorderWrapper"], 
+[data-testid="stForm"],
+div[data-testid="stMetric"] {
+    border-radius: 12px !important;
+}
+
+/* Specific inner containers within the block wrapper */
+div[data-testid="stVerticalBlockBorderWrapper"] > div {
+    border-radius: 12px !important;
+}
+
+/* Ensure the decision form and investigative cards follow the rule */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border: 1px solid #EFEBEB !important;
+    border-radius: 12px !important;
+}
+
+/* Investigative Workload Spacing Consistency */
+[data-testid="stVerticalBlockBorderWrapper"] > div[data-testid="stVerticalBlock"],
+[data-testid="stForm"] {
+    padding: 24px !important; /* Uniform padding inside cards */
+}
+
+/* Bottom margins between cards */
+[data-testid="stVerticalBlockBorderWrapper"] {
+    margin-bottom: 32px !important;
+}
+
+/* Ensure decision form has same separation as containers */
+form[data-testid="stForm"] {
+    margin-top: 32px !important;
+    border-radius: 12px !important;
 }
