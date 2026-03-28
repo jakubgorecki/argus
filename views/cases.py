@@ -33,6 +33,34 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
 
     ai_val = str(row.get('AI_DECISION') or '').strip()
     ai_reasoning = str(row.get('AI_REASONING') or '').strip()
+
+    if ai_val and ai_reasoning:
+        original_disposition = 'PENDING_AI_ADJUDICATION'
+    else:
+        current = str(row.get('STATUS') or '').strip()
+        if current in ('HUMAN_DISMISSED', 'DISMISS_OVERRIDDEN'):
+            original_disposition = current
+        else:
+            original_disposition = current
+
+    coarse_details = {
+        'CRITICAL_MATCH': 'High name similarity with corroborating data. Flagged for immediate review.',
+        'PENDING_AI_ADJUDICATION': 'Grey zone match routed to AI adjudicator for secondary analysis.',
+        'PENDING_HUMAN_REVIEW': 'Elevated name similarity. Escalated directly to human review.',
+        'NO_MATCH': 'Below screening thresholds. No match identified.',
+        'AUTO_DISMISSED': 'Low composite score. Automatically dismissed by rule-based filter.',
+    }
+    coarse_label = STATUS_LABELS.get(original_disposition, original_disposition)
+    coarse_detail = coarse_details.get(original_disposition, 'Disposition assigned by coarse filter.')
+
+    events.append({
+        "icon": "rule",
+        "title": "Coarse Filter: " + coarse_label,
+        "detail": coarse_detail,
+        "user": "SYSTEM",
+        "timestamp": row['SCREENED_AT'],
+    })
+
     if ai_val and ai_reasoning:
         ai_ts = row['SCREENED_AT']
         events.append({
@@ -94,15 +122,15 @@ def render_audit_trail(events):
 
         st.markdown(
             "<div style='display:flex; align-items:center; gap:8px;'>"
-            "<span class='material-symbols-rounded' style='font-size:16px; color:#4A192C; background:#F8F5F5; border:1px solid #EFEBEB; border-radius:50%; padding:3px;'>" + ev['icon'] + "</span>"
-            "<span style='font-size:13px; font-weight:700; color:var(--argus-text-dark);'>" + ev['title'] + "</span>"
+            "<span class='material-symbols-rounded' style='font-size:18px; color:#4A192C; background:#F8F5F5; border:1px solid #EFEBEB; border-radius:50%; padding:4px;'>" + ev['icon'] + "</span>"
+            "<span style='font-size:15px; font-weight:700; color:var(--argus-text-dark);'>" + ev['title'] + "</span>"
             "</div>",
             unsafe_allow_html=True
         )
         st.markdown(
             "<div style='" + border_css + "'>"
-            "<div style='font-size:12px; color:var(--argus-text-muted); line-height:1.4;'>" + ev['detail'] + "</div>"
-            "<div style='font-size:10px; color:#8C7C83; margin-top:4px; font-weight:600;'>" + ev['user'] + " &middot; " + ts_display + "</div>"
+            "<div style='font-size:14px; color:var(--argus-text-muted); line-height:1.5;'>" + ev['detail'] + "</div>"
+            "<div style='font-size:12px; color:#8C7C83; margin-top:4px; font-weight:600;'>" + ev['user'] + " &middot; " + ts_display + "</div>"
             "</div>",
             unsafe_allow_html=True
         )
@@ -570,7 +598,7 @@ if selected_case is not None:
                 ("Place of Birth", row.get('POB_SCORE', 0) or 0),
                 ("Composite", row.get('COMPOSITE_SCORE', 0) or 0),
             ]
-            score_html = "<div style='display:flex; flex-direction:column; gap:12px; padding-bottom:8px;'>"
+            score_html = "<div style='display:flex; flex-direction:column; gap:12px; padding-bottom:16px;'>"
             for s_name, s_val in scores:
                 pct = round(s_val * 100, 1)
                 bar_color = "#E53E3E" if pct >= 85 else ("#f57c00" if pct >= 50 else "#38A169")
@@ -605,7 +633,7 @@ if selected_case is not None:
                         <span style='font-size:12px; font-weight:700; color:var(--argus-text-dark);'>{m_val}</span>
                     </div>
                 """, unsafe_allow_html=True)
-
+            st.markdown("<div style='padding-bottom:8px;'></div>", unsafe_allow_html=True)
 
 else:
     cases_df = session.sql(CASE_QUERY + """
