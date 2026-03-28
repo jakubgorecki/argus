@@ -65,7 +65,7 @@ with col_charts:
                 <div style='background:#F8F5F5; color:#4A192C; padding:6px 14px; border-radius:100px; font-weight:700; font-size:13px; border: 1px solid #EFEBEB;'>+14.2%</div>
             </div>
         """, unsafe_allow_html=True)
-        st.caption("Auto-Dismissed Screenings Per Day")
+        st.caption("**Auto-Dismissed Screenings Per Day**")
         
         df_chart = get_chart_data()
         chart = alt.Chart(df_chart).mark_bar(
@@ -73,10 +73,11 @@ with col_charts:
             cornerRadiusTopLeft=3,
             cornerRadiusTopRight=3
         ).encode(
-            x=alt.X('DAY:N', title='Date', axis=alt.Axis(labelAngle=-45), scale=alt.Scale(paddingInner=0.1)),
-            y=alt.Y('NOISE_REMOVED:Q', title='Number of cases')
+            x=alt.X('DAY:N', title='Date', axis=alt.Axis(labelAngle=-45, titleFontWeight='bold')),
+            y=alt.Y('NOISE_REMOVED:Q', title='Number of cases', axis=alt.Axis(titleFontWeight='bold'))
         ).properties(
-            height=310
+            height=310,
+            background='transparent'
         ).configure_view(
             strokeWidth=0
         )
