@@ -9,17 +9,6 @@ from datetime import datetime
 session = get_active_session()
 
 
-def _parse_variant(val):
-    if isinstance(val, dict):
-        return val
-    if isinstance(val, str):
-        try:
-            return json.loads(val)
-        except Exception:
-            return {}
-    return {}
-
-
 def fetch_case_audit_trail(case_id, screening_request_id, row):
     events = []
 
@@ -37,11 +26,7 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
     if ai_val and ai_reasoning:
         original_disposition = 'PENDING_AI_ADJUDICATION'
     else:
-        current = str(row.get('STATUS') or '').strip()
-        if current in ('HUMAN_DISMISSED', 'DISMISS_OVERRIDDEN'):
-            original_disposition = current
-        else:
-            original_disposition = current
+        original_disposition = str(row.get('STATUS') or '').strip()
 
     coarse_details = {
         'CRITICAL_MATCH': 'High name similarity with corroborating data. Flagged for immediate review.',
@@ -390,7 +375,8 @@ if selected_case is not None:
     case_id = selected_case
     st.session_state['selected_case'] = case_id
 
-    case_data = session.sql(CASE_QUERY + f" WHERE r.RESULT_ID = '{case_id}'").to_pandas()
+    safe_case_id = case_id.replace("'", "''")
+    case_data = session.sql(CASE_QUERY + f" WHERE r.RESULT_ID = '{safe_case_id}'").to_pandas()
 
     if case_data.empty:
         st.error("Case data not found.")
@@ -514,9 +500,76 @@ if selected_case is not None:
 
         with st.container(border=True):
             st.markdown("<h4 style='margin:0 0 16px 0;'>Evidence & Files</h4>", unsafe_allow_html=True)
-            st.markdown("<div style='padding:24px; background-color:#f3f3f5; border-radius:12px; font-size:14px; color:#524346;'>No evidence files attached to this screening result. Upload files below to attach evidence.</div>", unsafe_allow_html=True)
+
+            evidence_df = session.sql(f"""
+                SELECT EVIDENCE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE, UPLOADED_AT, UPLOADED_BY
+                FROM AML_SCREENING.PIPELINE.CASE_EVIDENCE
+                WHERE RESULT_ID = '{case_id}'
+                ORDER BY UPLOADED_AT DESC
+            """).to_pandas()
+
+            if evidence_df.empty:
+                st.markdown("<div style='padding:24px; background-color:#f3f3f5; border-radius:12px; font-size:14px; color:#524346;'>No evidence files attached to this screening result.</div>", unsafe_allow_html=True)
+            else:
+                for _, ef in evidence_df.iterrows():
+                    size_kb = round(ef['FILE_SIZE'] / 1024, 1) if ef['FILE_SIZE'] else 0
+                    ts = str(ef['UPLOADED_AT'])[:16]
+                    fc1, fc2 = st.columns([8, 2], vertical_alignment="center")
+                    with fc1:
+                        st.markdown(
+                            "<div style='display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--argus-border);'>"
+                            "<span class='material-symbols-rounded' style='font-size:20px; color:#4A192C;'>description</span>"
+                            "<div>"
+                            f"<div style='font-size:14px; font-weight:600; color:var(--argus-text-dark);'>{ef['FILE_NAME']}</div>"
+                            f"<div style='font-size:11px; color:var(--argus-text-muted);'>{ef['FILE_TYPE']} &middot; {size_kb} KB &middot; {ef['UPLOADED_BY']} &middot; {ts}</div>"
+                            "</div></div>",
+                            unsafe_allow_html=True
+                        )
+                    with fc2:
+                        try:
+                            stage_path = f"@AML_SCREENING.PIPELINE.EVIDENCE_STAGE/{case_id}/{ef['FILE_NAME']}"
+                            file_stream = session.file.get_stream(stage_path)
+                            file_bytes = file_stream.read()
+                            st.download_button(
+                                "Download",
+                                data=file_bytes,
+                                file_name=ef['FILE_NAME'],
+                                icon=":material/download:",
+                                key=f"dl_{ef['EVIDENCE_ID']}",
+                                use_container_width=True,
+                            )
+                        except Exception:
+                            st.button("Unavailable", disabled=True, key=f"dl_{ef['EVIDENCE_ID']}", use_container_width=True)
+
             st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
-            st.file_uploader("Drop additional evidence", accept_multiple_files=True, label_visibility="collapsed")
+            uploaded_files = st.file_uploader("Upload evidence files", accept_multiple_files=True, label_visibility="collapsed", key=f"evidence_upload_{case_id}")
+
+            if uploaded_files:
+                for uf in uploaded_files:
+                    file_bytes = uf.read()
+                    file_name = uf.name.replace("'", "''")
+                    file_type = uf.type or "unknown"
+                    file_size = len(file_bytes)
+                    stage_path = f"{case_id}/{uf.name}"
+
+                    try:
+                        input_stream = BytesIO(file_bytes)
+                        session.file.put_stream(
+                            input_stream,
+                            f"@AML_SCREENING.PIPELINE.EVIDENCE_STAGE/{stage_path}",
+                            auto_compress=False,
+                            overwrite=True,
+                        )
+
+                        session.sql(f"""
+                            INSERT INTO AML_SCREENING.PIPELINE.CASE_EVIDENCE
+                                (RESULT_ID, FILE_NAME, FILE_TYPE, FILE_SIZE, STAGE_PATH)
+                            VALUES ('{case_id}', '{file_name}', '{file_type}', {file_size}, '{stage_path}')
+                        """).collect()
+
+                        st.success(f"Uploaded **{uf.name}** ({round(file_size/1024, 1)} KB)")
+                    except Exception as e:
+                        st.error(f"Failed to upload {uf.name}: {e}")
 
         with st.form(key=f"review_form_{case_id}", clear_on_submit=True, border=True):
             st.markdown("<h4 style='margin-bottom:16px;'>Record Review Decision</h4>", unsafe_allow_html=True)
