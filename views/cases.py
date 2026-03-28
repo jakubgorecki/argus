@@ -29,12 +29,14 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
         "timestamp": row['SCREENED_AT'],
     })
 
-    if row.get('AI_DECISION') and pd.notna(row.get('AI_DECISION')):
+    ai_val = str(row.get('AI_DECISION') or '').strip()
+    if ai_val and ai_val.upper() != 'NONE' and pd.notna(row.get('AI_DECISION')):
         ai_ts = row['SCREENED_AT']
+        ai_reasoning = str(row.get('AI_REASONING') or '').strip()
         events.append({
             "icon": "auto_awesome",
-            "title": "AI Adjudication: " + str(row['AI_DECISION']),
-            "detail": str(row.get('AI_REASONING') or 'No reasoning provided.')[:200],
+            "title": "AI Adjudication: " + ai_val,
+            "detail": ai_reasoning[:200] if ai_reasoning else 'No reasoning provided.',
             "user": "AI ADJUDICATOR",
             "timestamp": ai_ts,
         })
@@ -375,7 +377,8 @@ if selected_case is not None:
                 st.rerun()
 
     with col_right:
-        if row.get('AI_DECISION') and pd.notna(row.get('AI_DECISION')):
+        ai_val_display = str(row.get('AI_DECISION') or '').strip()
+        if ai_val_display and ai_val_display.upper() != 'NONE' and pd.notna(row.get('AI_DECISION')):
             with st.container(border=True):
                 ai_title = f"AI Decision: {row['AI_DECISION']}"
                 ai_desc = row.get('AI_REASONING', '') or 'No reasoning provided.'
