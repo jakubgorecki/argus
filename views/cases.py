@@ -402,7 +402,9 @@ if selected_case is not None:
         btn_col1, btn_col2 = st.columns([1, 1])
         with btn_col1:
             if st.button("Share Case", icon=":material/share:", use_container_width=True):
-                st.toast("Case link copied to clipboard!")
+                import streamlit.components.v1 as components
+                components.html(f"<script>navigator.clipboard.writeText('{case_id}');</script>", height=0)
+                st.toast(f"Case ID copied: {case_id}")
         with btn_col2:
             st.download_button(
                 "Export PDF",

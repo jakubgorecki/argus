@@ -9,12 +9,17 @@ def render_topbar():
     )
     
     with col_search:
-        st.text_input(
+        search_val = st.text_input(
             "Search input",
-            placeholder="Search cases, entities, or investigators...",
+            placeholder="Search by case identifier",
             label_visibility="collapsed",
-            icon=":material/search:"
+            icon=":material/search:",
+            key="global_case_search",
         )
+        if search_val and search_val.strip():
+            st.query_params["selected_case"] = search_val.strip()
+            st.query_params["page"] = "cases"
+            st.rerun()
         
     with col_profile:
         st.markdown("""
