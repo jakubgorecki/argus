@@ -1,9 +1,21 @@
 import streamlit as st
 import pandas as pd
+import json
 from snowflake.snowpark.context import get_active_session
 from datetime import datetime
 
 session = get_active_session()
+
+
+def _parse_variant(val):
+    if isinstance(val, dict):
+        return val
+    if isinstance(val, str):
+        try:
+            return json.loads(val)
+        except Exception:
+            return {}
+    return {}
 
 
 def fetch_case_audit_trail(case_id, screening_request_id, row):
@@ -12,7 +24,7 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
     events.append({
         "icon": "shield",
         "title": "Screening Initiated",
-        "detail": f"Batch screening processed against sanctions snapshot",
+        "detail": "Batch screening processed against sanctions snapshot",
         "user": "SYSTEM",
         "timestamp": row['SCREENED_AT'],
     })
@@ -21,39 +33,38 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
         ai_ts = row['SCREENED_AT']
         events.append({
             "icon": "auto_awesome",
-            "title": f"AI Adjudication: {row['AI_DECISION']}",
-            "detail": (row.get('AI_REASONING') or 'No reasoning provided.')[:200],
+            "title": "AI Adjudication: " + str(row['AI_DECISION']),
+            "detail": str(row.get('AI_REASONING') or 'No reasoning provided.')[:200],
             "user": "AI ADJUDICATOR",
             "timestamp": ai_ts,
         })
 
     audit_df = session.sql(f"""
-        SELECT EVENT_TYPE, DETAILS, CREATED_AT, CREATED_BY
+        SELECT
+            DETAILS:"decision"::VARCHAR AS DECISION,
+            DETAILS:"rationale"::VARCHAR AS RATIONALE,
+            DETAILS:"new_disposition"::VARCHAR AS NEW_DISPOSITION,
+            CREATED_AT,
+            CREATED_BY
         FROM AML_SCREENING.PIPELINE.AUDIT_LOG
         WHERE EVENT_TYPE = 'HUMAN_REVIEW'
           AND DETAILS:"result_id"::VARCHAR = '{case_id}'
         ORDER BY CREATED_AT ASC
     """).to_pandas()
 
+    icon_map = {"Cleared": "check_circle", "Escalate": "arrow_upward", "Reject & Block": "block"}
     for _, a_row in audit_df.iterrows():
-        details = a_row['DETAILS'] if isinstance(a_row['DETAILS'], dict) else {}
-        if isinstance(a_row['DETAILS'], str):
-            import json
-            try:
-                details = json.loads(a_row['DETAILS'])
-            except Exception:
-                details = {}
-        decision = details.get('decision', 'Unknown')
-        rationale = details.get('rationale', '')
-        new_disp = details.get('new_disposition', '')
+        decision = str(a_row.get('DECISION', 'Unknown') or 'Unknown')
+        rationale = str(a_row.get('RATIONALE', '') or '')
+        new_disp = str(a_row.get('NEW_DISPOSITION', '') or '')
         disp_label = STATUS_LABELS.get(new_disp, new_disp)
+        detail_text = (disp_label + ". " + rationale) if rationale else disp_label
 
-        icon_map = {"Cleared": "check_circle", "Escalate": "arrow_upward", "Reject & Block": "block"}
         events.append({
             "icon": icon_map.get(decision, "rate_review"),
-            "title": f"Human Review: {decision}",
-            "detail": f"{disp_label}. {rationale}" if rationale else disp_label,
-            "user": a_row['CREATED_BY'],
+            "title": "Human Review: " + decision,
+            "detail": detail_text,
+            "user": str(a_row['CREATED_BY']),
             "timestamp": a_row['CREATED_AT'],
         })
 
@@ -62,10 +73,9 @@ def fetch_case_audit_trail(case_id, screening_request_id, row):
 
 def render_audit_trail(events):
     if not events:
-        st.markdown("<div style='padding:16px; color:#8C7C83; font-size:13px;'>No activity recorded yet.</div>", unsafe_allow_html=True)
+        st.caption("No activity recorded yet.")
         return
 
-    html = "<div style='display:flex; flex-direction:column; gap:0;'>"
     for i, ev in enumerate(events):
         is_last = i == len(events) - 1
         ts = ev['timestamp']
@@ -76,24 +86,22 @@ def render_audit_trail(events):
         else:
             ts_display = str(ts)[:16]
 
-        connector = "" if is_last else "<div style='width:2px; background:#EFEBEB; height:16px; margin-left:11px;'></div>"
+        border_css = "border-left:2px solid #EFEBEB; margin-left:11px; padding-left:20px; padding-bottom:16px;" if not is_last else "margin-left:11px; padding-left:20px;"
 
-        html += f"""
-        <div style='display:flex; align-items:flex-start; gap:12px;'>
-            <div style='display:flex; flex-direction:column; align-items:center; flex-shrink:0;'>
-                <div style='width:24px; height:24px; border-radius:50%; background:#F8F5F5; display:flex; align-items:center; justify-content:center; border:1px solid #EFEBEB;'>
-                    <span class='material-symbols-rounded' style='font-size:14px; color:#4A192C;'>{ev['icon']}</span>
-                </div>
-                {connector}
-            </div>
-            <div style='padding-bottom:{("16px" if not is_last else "0")};'>
-                <div style='font-size:13px; font-weight:700; color:var(--argus-text-dark); line-height:24px;'>{ev['title']}</div>
-                <div style='font-size:12px; color:var(--argus-text-muted); line-height:1.4; margin-top:2px;'>{ev['detail']}</div>
-                <div style='font-size:10px; color:#8C7C83; margin-top:4px; font-weight:600;'>{ev['user']} &middot; {ts_display}</div>
-            </div>
-        </div>"""
-    html += "</div>"
-    st.markdown(html, unsafe_allow_html=True)
+        st.markdown(
+            "<div style='display:flex; align-items:center; gap:8px;'>"
+            "<span class='material-symbols-rounded' style='font-size:16px; color:#4A192C; background:#F8F5F5; border:1px solid #EFEBEB; border-radius:50%; padding:3px;'>" + ev['icon'] + "</span>"
+            "<span style='font-size:13px; font-weight:700; color:var(--argus-text-dark);'>" + ev['title'] + "</span>"
+            "</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            "<div style='" + border_css + "'>"
+            "<div style='font-size:12px; color:var(--argus-text-muted); line-height:1.4;'>" + ev['detail'] + "</div>"
+            "<div style='font-size:10px; color:#8C7C83; margin-top:4px; font-weight:600;'>" + ev['user'] + " &middot; " + ts_display + "</div>"
+            "</div>",
+            unsafe_allow_html=True
+        )
 
 COUNTRY_FLAGS = {
     'AF':'1f1e6-1f1eb','AL':'1f1e6-1f1f1','DZ':'1f1e9-1f1ff','AR':'1f1e6-1f1f7',
