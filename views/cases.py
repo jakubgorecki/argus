@@ -357,8 +357,7 @@ if selected_case is not None:
 
                 session.sql(f"""
                     UPDATE AML_SCREENING.PIPELINE.SCREENING_RESULTS
-                    SET DISPOSITION = '{new_disp}',
-                        AI_REASONING = COALESCE(AI_REASONING, '') || ' | HUMAN REVIEW: {decision} - {rationale}'
+                    SET DISPOSITION = '{new_disp}'
                     WHERE RESULT_ID = '{case_id}'
                 """).collect()
 
@@ -376,25 +375,24 @@ if selected_case is not None:
                 st.rerun()
 
     with col_right:
-        with st.container(border=True):
-            ai_title = "AI Assessment"
-            if row.get('AI_DECISION'):
+        if row.get('AI_DECISION') and pd.notna(row.get('AI_DECISION')):
+            with st.container(border=True):
                 ai_title = f"AI Decision: {row['AI_DECISION']}"
-            ai_desc = row.get('AI_REASONING', '') or 'No AI analysis has been performed on this screening result yet.'
-            if row.get('AI_ERROR') and pd.notna(row['AI_ERROR']):
-                ai_desc += f"\n\n⚠️ Error: {row['AI_ERROR']}"
+                ai_desc = row.get('AI_REASONING', '') or 'No reasoning provided.'
+                if row.get('AI_ERROR') and pd.notna(row['AI_ERROR']):
+                    ai_desc += f"\n\n⚠️ Error: {row['AI_ERROR']}"
 
-            st.markdown(f"""
-                <div style='display:flex; flex-direction:column; gap:16px;'>
-                    <div style='background-color:#2c0210; color:white; padding:12px; border-radius:12px; width: fit-content;'>
-                        <span class='material-symbols-rounded'>auto_awesome</span>
+                st.markdown(f"""
+                    <div style='display:flex; flex-direction:column; gap:16px;'>
+                        <div style='background-color:#2c0210; color:white; padding:12px; border-radius:12px; width: fit-content;'>
+                            <span class='material-symbols-rounded'>auto_awesome</span>
+                        </div>
+                        <div>
+                            <h4 style='margin:0; color:#2c0210; font-size: 18px;'>{ai_title}</h4>
+                            <p style='margin-top:12px; font-size:14px; color:#1a1c1d; line-height: 1.5;'>{ai_desc}</p>
+                        </div>
                     </div>
-                    <div>
-                        <h4 style='margin:0; color:#2c0210; font-size: 18px;'>{ai_title}</h4>
-                        <p style='margin-top:12px; font-size:14px; color:#1a1c1d; line-height: 1.5;'>{ai_desc}</p>
-                    </div>
-                </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
 
         with st.container(border=True):
             st.markdown("<h4 style='margin:0 0 16px 0;'>Screening Metadata</h4>", unsafe_allow_html=True)
