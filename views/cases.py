@@ -474,7 +474,7 @@ else:
             text_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
 
-            card_html = f"""<a href="?selected_case={row['ID']}" target="_self" class="case-row">
+            card_html = f"""<a href="?streamlit-selected_case={row['ID']}" target="_self" class="case-row">
 <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
 <div style="display: flex; flex-direction: column; width: 40%;">
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2px;">
