@@ -466,6 +466,35 @@ else:
 </style>
 """, unsafe_allow_html=True)
 
+    st.markdown("""
+<style>
+.case-row-btn > div > button {
+    border: 1px solid #EFEBEB !important;
+    padding: 16px 24px !important;
+    background-color: #ffffff !important;
+    transition: all 0.2s ease !important;
+    text-align: left !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    color: inherit !important;
+    font-weight: normal !important;
+    height: auto !important;
+}
+.case-row-btn > div > button:hover {
+    background-color: #fafafa !important;
+    border-left: 4px solid #4A192C !important;
+}
+.case-row-btn:first-child > div > button {
+    border-top-left-radius: 12px !important;
+    border-top-right-radius: 12px !important;
+}
+.case-row-btn:last-child > div > button {
+    border-bottom-left-radius: 12px !important;
+    border-bottom-right-radius: 12px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
     else:
@@ -474,27 +503,31 @@ else:
             text_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
 
-            card_html = f"""<a href="?streamlit-selected_case={row['ID']}" target="_self" class="case-row">
-<div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
-<div style="display: flex; flex-direction: column; width: 40%;">
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2px;">
-<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width: 20px; height: 20px;" alt="Flag" />
-<span style="font-weight: 600; font-size: 15px; color: var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
+            row_html = f"""<div style="display:flex; align-items:center; justify-content:space-between; font-family:'Inter',sans-serif; pointer-events:none;">
+<div style="display:flex; flex-direction:column; width:40%;">
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
+<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width:20px; height:20px;" />
+<span style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
 </div>
-<span style="font-size: 10px; color: var(--argus-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 32px;">{row['TYPE']}</span>
+<span style="font-size:10px; color:var(--argus-text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:32px;">{row['TYPE']}</span>
 </div>
-<div style="width: 25%;">
-<div style="width: 100%; max-width: 140px; height: 6px; background-color: var(--argus-accent-light); border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
-<div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: var(--argus-primary); border-radius: 3px;"></div>
+<div style="width:25%;">
+<div style="width:100%; max-width:140px; height:6px; background-color:var(--argus-accent-light); border-radius:3px; overflow:hidden; margin-bottom:4px;">
+<div style="width:{row['RISK_SCORE']}%; height:100%; background-color:var(--argus-primary); border-radius:3px;"></div>
 </div>
-<div style="font-size: 11px; font-weight: 700; color: var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
+<div style="font-size:11px; font-weight:700; color:var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
 </div>
-<div style="width: 15%;">
-<div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
+<div style="width:15%;">
+<div style="font-weight:700; font-size:14px; color:var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
 </div>
-<div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">{label}</span>
+<div style="width:15%; text-align:right;">
+<span style="background-color:{color}; color:{text_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;">{label}</span>
 </div>
-</div>
-</a>"""
-            st.markdown(card_html, unsafe_allow_html=True)
+</div>"""
+
+            with st.container():
+                st.markdown("<div class='case-row-btn'>", unsafe_allow_html=True)
+                if st.button(row_html, key=f"case_{row['ID']}", use_container_width=True):
+                    st.query_params["selected_case"] = row["ID"]
+                    st.rerun()
+                st.markdown("</div>", unsafe_allow_html=True)
