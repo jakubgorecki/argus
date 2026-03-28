@@ -347,7 +347,7 @@ else:
     with f_col2:
         risk_filter = st.selectbox("Risk", ["Risk: All Levels", "High", "Medium", "Low"], label_visibility="collapsed")
     with f_col3:
-        entity_filter = st.selectbox("Entity", ["Entity: All", "Individual", "Entity"], label_visibility="collapsed")
+        entity_filter = st.selectbox("Entity", ["Entity: All", "INDIVIDUAL", "ENTITY"], label_visibility="collapsed")
 
     filtered_df = cases_df.copy()
     filtered_df = filtered_df.sort_values(by="RISK_SCORE", ascending=False)
@@ -361,26 +361,21 @@ else:
         elif risk_filter == "Low": filtered_df = filtered_df[filtered_df['RISK_SCORE'] < 30]
 
     if entity_filter != "Entity: All":
-        filtered_df = filtered_df[filtered_df['TYPE'] == entity_filter.upper()]
+        filtered_df = filtered_df[filtered_df['TYPE'] == entity_filter]
 
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("""
 <style>
-/* Target only the horizontal blocks that contain our specific row marker */
-[data-testid="stHorizontalBlock"]:has(.row-marker) {
-    gap: 0 !important; 
-    align-items: flex-start !important;
+.row-block [data-testid="stHorizontalBlock"] {
+    gap: 0 !important;
+    align-items: stretch !important;
 }
-
-/* Remove padding from the column containing the button */
-[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:nth-child(2) {
-    padding-left: 0 !important;
+.row-block [data-testid="stColumn"] {
+    padding: 0 !important;
 }
-
-/* Style the Streamlit button to match the left-side div perfectly */
-[data-testid="stHorizontalBlock"]:has(.row-marker) button {
-    height: 84px !important; /* Force exact height to match row */
+.row-block [data-testid="stColumn"]:last-child button {
+    height: 84px !important;
     min-height: 84px !important;
     border: 1px solid #EFEBEB !important;
     border-left: none !important;
@@ -390,21 +385,10 @@ else:
     transition: all 0.2s ease !important;
     margin: 0 !important;
     padding: 0 !important;
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
-
-[data-testid="stHorizontalBlock"]:has(.row-marker) button:hover {
+.row-block [data-testid="stColumn"]:last-child button:hover {
     background: #f3f3f5 !important;
     color: #4A192C !important;
-    border: 1px solid #EFEBEB !important;
-    border-left: none !important;
-}
-
-/* Target the Material icon inside the button */
-[data-testid="stHorizontalBlock"]:has(.row-marker) button span.material-symbols-rounded {
-    font-size: 24px !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -427,9 +411,9 @@ else:
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
             rid = row['ID']
 
-            col_row, col_btn = st.columns()
+            st.markdown("<div class='row-block'>", unsafe_allow_html=True)
+            col_row, col_btn = st.columns([9, 1])
             with col_row:
-                # Changed min-height:60px to a fixed height:84px and added box-sizing
                 st.markdown(f"""
 <div style="height:84px; box-sizing:border-box; border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif;">
 <div style="width:42%; display:flex; flex-direction:column;">
@@ -453,10 +437,7 @@ else:
 </div>
 </div>""", unsafe_allow_html=True)
             with col_btn:
-                # Inject the hidden marker so CSS can target this specific row block
-                st.markdown("<span class='row-marker' style='display:none;'></span>", unsafe_allow_html=True)
-                
-                # Use Streamlit's native icon support instead of standard text for the arrow
-                if st.button("", icon=":material/chevron_right:", key=f"c_{rid}", use_container_width=True):
+                if st.button("›", key=f"c_{rid}", use_container_width=True):
                     st.query_params["selected_case"] = rid
                     st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
