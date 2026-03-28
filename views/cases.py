@@ -41,52 +41,44 @@ STATUS_FG = {
     'DISMISS_OVERRIDDEN': '#e65100',
 }
 
-def load_cases_data():
-    cases = session.sql("""
-        SELECT
-            r.RESULT_ID AS ID,
-            r.FULL_NAME_SCREENED AS ENTITY_NAME,
-            CASE WHEN i.GENDER IS NOT NULL THEN 'INDIVIDUAL' ELSE 'ENTITY' END AS TYPE,
-            COALESCE(i.COUNTRY, 'N/A') AS COUNTRY,
-            r.DISPOSITION AS STATUS,
-            ROUND(r.COMPOSITE_SCORE * 100, 1) AS RISK_SCORE,
-            ROUND(r.NAME_SIMILARITY_SCORE * 100, 0) || '%' AS NAME_SIMILARITY,
-            r.MATCHED_ENTITY_NAME,
-            r.MATCHED_ENTITY_ALIASES,
-            r.MATCHED_LIST_NAME,
-            r.MATCHED_LIST_ABBREVIATION,
-            r.MATCHED_COUNTRY,
-            r.MATCHED_DOB,
-            r.MATCHED_POB,
-            r.AI_DECISION,
-            r.AI_REASONING,
-            r.AI_ERROR,
-            COALESCE(i.DATE_OF_BIRTH::VARCHAR, 'N/A') AS DOB,
-            COALESCE(i.PLACE_OF_BIRTH, 'N/A') AS POB,
-            r.DOB_SCORE,
-            r.DOB_MATCH_TYPE,
-            r.COUNTRY_SCORE,
-            r.POB_SCORE,
-            r.POB_MATCH_TYPE,
-            r.NAME_SIMILARITY_SCORE,
-            r.COMPOSITE_SCORE,
-            r.LOGICAL_EXCLUSION,
-            r.EXCLUSION_REASON,
-            r.CANDIDATE_COUNT,
-            r.SCREENED_AT,
-            COALESCE(i.GENDER, 'N/A') AS GENDER,
-            COALESCE(i.SOURCE_SYSTEM, 'N/A') AS SOURCE_SYSTEM
-        FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS r
-        LEFT JOIN AML_SCREENING.PIPELINE.INCOMING_SCREENINGS i
-            ON r.SCREENING_REQUEST_ID = i.SCREENING_REQUEST_ID
-        WHERE r.DISPOSITION != 'AUTO_DISMISSED'
-           OR r.SCREENED_AT >= DATEADD('day', -7, CURRENT_TIMESTAMP())
-        ORDER BY r.COMPOSITE_SCORE DESC
-    """).to_pandas()
-    cases['FLAG_URL'] = cases['COUNTRY'].map(COUNTRY_FLAGS).fillna('1f3f3-fe0f') + '.png'
-    return cases
-
-cases_df = load_cases_data()
+CASE_QUERY = """
+    SELECT
+        r.RESULT_ID AS ID,
+        r.FULL_NAME_SCREENED AS ENTITY_NAME,
+        CASE WHEN i.GENDER IS NOT NULL THEN 'INDIVIDUAL' ELSE 'ENTITY' END AS TYPE,
+        COALESCE(i.COUNTRY, 'N/A') AS COUNTRY,
+        r.DISPOSITION AS STATUS,
+        ROUND(r.COMPOSITE_SCORE * 100, 1) AS RISK_SCORE,
+        ROUND(r.NAME_SIMILARITY_SCORE * 100, 0) || '%' AS NAME_SIMILARITY,
+        r.MATCHED_ENTITY_NAME,
+        r.MATCHED_ENTITY_ALIASES,
+        r.MATCHED_LIST_NAME,
+        r.MATCHED_LIST_ABBREVIATION,
+        r.MATCHED_COUNTRY,
+        r.MATCHED_DOB,
+        r.MATCHED_POB,
+        r.AI_DECISION,
+        r.AI_REASONING,
+        r.AI_ERROR,
+        COALESCE(i.DATE_OF_BIRTH::VARCHAR, 'N/A') AS DOB,
+        COALESCE(i.PLACE_OF_BIRTH, 'N/A') AS POB,
+        r.DOB_SCORE,
+        r.DOB_MATCH_TYPE,
+        r.COUNTRY_SCORE,
+        r.POB_SCORE,
+        r.POB_MATCH_TYPE,
+        r.NAME_SIMILARITY_SCORE,
+        r.COMPOSITE_SCORE,
+        r.LOGICAL_EXCLUSION,
+        r.EXCLUSION_REASON,
+        r.CANDIDATE_COUNT,
+        r.SCREENED_AT,
+        COALESCE(i.GENDER, 'N/A') AS GENDER,
+        COALESCE(i.SOURCE_SYSTEM, 'N/A') AS SOURCE_SYSTEM
+    FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS r
+    LEFT JOIN AML_SCREENING.PIPELINE.INCOMING_SCREENINGS i
+        ON r.SCREENING_REQUEST_ID = i.SCREENING_REQUEST_ID
+"""
 
 selected_case = st.query_params.get("selected_case", None)
 if selected_case is None:
@@ -96,45 +88,7 @@ if selected_case is not None:
     case_id = selected_case
     st.session_state['selected_case'] = case_id
 
-    case_data = session.sql(f"""
-        SELECT
-            r.RESULT_ID AS ID,
-            r.FULL_NAME_SCREENED AS ENTITY_NAME,
-            CASE WHEN i.GENDER IS NOT NULL THEN 'INDIVIDUAL' ELSE 'ENTITY' END AS TYPE,
-            COALESCE(i.COUNTRY, 'N/A') AS COUNTRY,
-            r.DISPOSITION AS STATUS,
-            ROUND(r.COMPOSITE_SCORE * 100, 1) AS RISK_SCORE,
-            ROUND(r.NAME_SIMILARITY_SCORE * 100, 0) || '%' AS NAME_SIMILARITY,
-            r.MATCHED_ENTITY_NAME,
-            r.MATCHED_ENTITY_ALIASES,
-            r.MATCHED_LIST_NAME,
-            r.MATCHED_LIST_ABBREVIATION,
-            r.MATCHED_COUNTRY,
-            r.MATCHED_DOB,
-            r.MATCHED_POB,
-            r.AI_DECISION,
-            r.AI_REASONING,
-            r.AI_ERROR,
-            COALESCE(i.DATE_OF_BIRTH::VARCHAR, 'N/A') AS DOB,
-            COALESCE(i.PLACE_OF_BIRTH, 'N/A') AS POB,
-            r.DOB_SCORE,
-            r.DOB_MATCH_TYPE,
-            r.COUNTRY_SCORE,
-            r.POB_SCORE,
-            r.POB_MATCH_TYPE,
-            r.NAME_SIMILARITY_SCORE,
-            r.COMPOSITE_SCORE,
-            r.LOGICAL_EXCLUSION,
-            r.EXCLUSION_REASON,
-            r.CANDIDATE_COUNT,
-            r.SCREENED_AT,
-            COALESCE(i.GENDER, 'N/A') AS GENDER,
-            COALESCE(i.SOURCE_SYSTEM, 'N/A') AS SOURCE_SYSTEM
-        FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS r
-        LEFT JOIN AML_SCREENING.PIPELINE.INCOMING_SCREENINGS i
-            ON r.SCREENING_REQUEST_ID = i.SCREENING_REQUEST_ID
-        WHERE r.RESULT_ID = '{case_id}'
-    """).to_pandas()
+    case_data = session.sql(CASE_QUERY + f" WHERE r.RESULT_ID = '{case_id}'").to_pandas()
 
     if case_data.empty:
         st.error("Case data not found.")
@@ -170,30 +124,6 @@ if selected_case is not None:
         """, unsafe_allow_html=True)
 
     with det_col2:
-        st.markdown("""
-        <style>
-        div[data-testid="stHorizontalBlock"] .stButton > button {
-            background-color: white !important;
-            border: 1px solid #EFEBEB !important;
-            border-radius: 8px !important;
-            color: #2c0210 !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            padding: 8px 16px !important;
-            height: auto !important;
-            width: auto !important;
-            transition: all 0.2s ease !important;
-            display: flex !important;
-            align-items: center !important;
-            gap: 8px !important;
-        }
-        div[data-testid="stHorizontalBlock"] .stButton > button:hover {
-            background-color: #fafafa !important;
-            border-color: #d1d1d1 !important;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
         btn_col1, btn_col2 = st.columns([1, 1])
         with btn_col1:
             if st.button("Share Case", icon=":material/share:", use_container_width=True):
@@ -323,12 +253,12 @@ if selected_case is not None:
             if submit_review:
                 disposition_map = {"Cleared": "AUTO_DISMISSED", "Escalate": "PENDING_HUMAN_REVIEW", "Reject & Block": "CRITICAL_MATCH"}
                 new_disp = disposition_map[decision]
-                rationale = new_note.strip() if new_note.strip() else "No additional rationale provided."
+                rationale = (new_note.strip() if new_note.strip() else "No additional rationale provided.").replace("'", "''")
 
                 session.sql(f"""
                     UPDATE AML_SCREENING.PIPELINE.SCREENING_RESULTS
                     SET DISPOSITION = '{new_disp}',
-                        AI_REASONING = COALESCE(AI_REASONING, '') || ' | HUMAN REVIEW: {decision} - ' || '{rationale.replace(chr(39), chr(39)+chr(39))}'
+                        AI_REASONING = COALESCE(AI_REASONING, '') || ' | HUMAN REVIEW: {decision} - {rationale}'
                     WHERE RESULT_ID = '{case_id}'
                 """).collect()
 
@@ -338,7 +268,7 @@ if selected_case is not None:
                         'result_id', '{case_id}',
                         'decision', '{decision}',
                         'new_disposition', '{new_disp}',
-                        'rationale', '{rationale.replace(chr(39), chr(39)+chr(39))}',
+                        'rationale', '{rationale}',
                         'completed_at', CURRENT_TIMESTAMP()::VARCHAR
                     )
                 """).collect()
@@ -384,6 +314,13 @@ if selected_case is not None:
 
 
 else:
+    cases_df = session.sql(CASE_QUERY + """
+        WHERE r.DISPOSITION != 'AUTO_DISMISSED'
+           OR r.SCREENED_AT >= DATEADD('day', -7, CURRENT_TIMESTAMP())
+        ORDER BY r.COMPOSITE_SCORE DESC
+    """).to_pandas()
+    cases_df['FLAG_URL'] = cases_df['COUNTRY'].map(COUNTRY_FLAGS).fillna('1f3f3-fe0f') + '.png'
+
     st.title("Case Management")
 
     total = len(cases_df)
@@ -437,73 +374,19 @@ else:
 </div>
 """, unsafe_allow_html=True)
 
-    st.markdown("""
-<style>
-.case-row {
-    border: 1px solid #EFEBEB;
-    border-top: none;
-    padding: 16px 24px;
-    background-color: #ffffff;
-    transition: all 0.2s ease;
-    display: block;
-    text-decoration: none !important;
-    color: inherit !important;
-}
-.case-row:first-of-type {
-    border-top: 1px solid #EFEBEB;
-    border-top-left-radius: 12px;
-    border-top-right-radius: 12px;
-}
-.case-row:last-of-type {
-    border-bottom-left-radius: 12px;
-    border-bottom-right-radius: 12px;
-}
-.case-row:hover {
-    background-color: #fafafa;
-    transform: translateX(4px);
-    border-left: 4px solid #4A192C;
-}
-</style>
-""", unsafe_allow_html=True)
-
-    st.markdown("""
-<style>
-.case-row-btn > div > button {
-    border: 1px solid #EFEBEB !important;
-    padding: 16px 24px !important;
-    background-color: #ffffff !important;
-    transition: all 0.2s ease !important;
-    text-align: left !important;
-    border-radius: 0 !important;
-    width: 100% !important;
-    color: inherit !important;
-    font-weight: normal !important;
-    height: auto !important;
-}
-.case-row-btn > div > button:hover {
-    background-color: #fafafa !important;
-    border-left: 4px solid #4A192C !important;
-}
-.case-row-btn:first-child > div > button {
-    border-top-left-radius: 12px !important;
-    border-top-right-radius: 12px !important;
-}
-.case-row-btn:last-child > div > button {
-    border-bottom-left-radius: 12px !important;
-    border-bottom-right-radius: 12px !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
     else:
         for idx, row in filtered_df.iterrows():
             color = STATUS_BG.get(row["STATUS"], "#ffdad6")
-            text_color = STATUS_FG.get(row["STATUS"], "#93000a")
+            txt_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
+            rid = row['ID']
 
-            row_html = f"""<div style="display:flex; align-items:center; justify-content:space-between; font-family:'Inter',sans-serif; pointer-events:none;">
+            col_row, col_btn = st.columns([20, 1])
+            with col_row:
+                st.markdown(f"""
+<div style="border:1px solid #EFEBEB; padding:16px 24px; background:#fff; border-radius:8px; margin-bottom:4px; display:flex; align-items:center; justify-content:space-between; font-family:'Inter',sans-serif;">
 <div style="display:flex; flex-direction:column; width:40%;">
 <div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
 <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width:20px; height:20px;" />
@@ -512,8 +395,8 @@ else:
 <span style="font-size:10px; color:var(--argus-text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:32px;">{row['TYPE']}</span>
 </div>
 <div style="width:25%;">
-<div style="width:100%; max-width:140px; height:6px; background-color:var(--argus-accent-light); border-radius:3px; overflow:hidden; margin-bottom:4px;">
-<div style="width:{row['RISK_SCORE']}%; height:100%; background-color:var(--argus-primary); border-radius:3px;"></div>
+<div style="width:100%; max-width:140px; height:6px; background:var(--argus-accent-light); border-radius:3px; overflow:hidden; margin-bottom:4px;">
+<div style="width:{row['RISK_SCORE']}%; height:100%; background:var(--argus-primary); border-radius:3px;"></div>
 </div>
 <div style="font-size:11px; font-weight:700; color:var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
 </div>
@@ -521,13 +404,10 @@ else:
 <div style="font-weight:700; font-size:14px; color:var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
 </div>
 <div style="width:15%; text-align:right;">
-<span style="background-color:{color}; color:{text_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;">{label}</span>
+<span style="background:{color}; color:{txt_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;">{label}</span>
 </div>
-</div>"""
-
-            with st.container():
-                st.markdown("<div class='case-row-btn'>", unsafe_allow_html=True)
-                if st.button(row_html, key=f"case_{row['ID']}", use_container_width=True):
-                    st.query_params["selected_case"] = row["ID"]
+</div>""", unsafe_allow_html=True)
+            with col_btn:
+                if st.button("›", key=f"c_{rid}"):
+                    st.query_params["selected_case"] = rid
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
