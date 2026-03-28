@@ -1,8 +1,99 @@
 import streamlit as st
 import pandas as pd
 from snowflake.snowpark.context import get_active_session
+from datetime import datetime
 
 session = get_active_session()
+
+
+def fetch_case_audit_trail(case_id, screening_request_id, row):
+    events = []
+
+    events.append({
+        "icon": "shield",
+        "title": "Screening Initiated",
+        "detail": f"Batch screening processed against sanctions snapshot",
+        "user": "SYSTEM",
+        "timestamp": row['SCREENED_AT'],
+    })
+
+    if row.get('AI_DECISION') and pd.notna(row.get('AI_DECISION')):
+        ai_ts = row['SCREENED_AT']
+        events.append({
+            "icon": "auto_awesome",
+            "title": f"AI Adjudication: {row['AI_DECISION']}",
+            "detail": (row.get('AI_REASONING') or 'No reasoning provided.')[:200],
+            "user": "AI ADJUDICATOR",
+            "timestamp": ai_ts,
+        })
+
+    audit_df = session.sql(f"""
+        SELECT EVENT_TYPE, DETAILS, CREATED_AT, CREATED_BY
+        FROM AML_SCREENING.PIPELINE.AUDIT_LOG
+        WHERE EVENT_TYPE = 'HUMAN_REVIEW'
+          AND DETAILS:"result_id"::VARCHAR = '{case_id}'
+        ORDER BY CREATED_AT ASC
+    """).to_pandas()
+
+    for _, a_row in audit_df.iterrows():
+        details = a_row['DETAILS'] if isinstance(a_row['DETAILS'], dict) else {}
+        if isinstance(a_row['DETAILS'], str):
+            import json
+            try:
+                details = json.loads(a_row['DETAILS'])
+            except Exception:
+                details = {}
+        decision = details.get('decision', 'Unknown')
+        rationale = details.get('rationale', '')
+        new_disp = details.get('new_disposition', '')
+        disp_label = STATUS_LABELS.get(new_disp, new_disp)
+
+        icon_map = {"Cleared": "check_circle", "Escalate": "arrow_upward", "Reject & Block": "block"}
+        events.append({
+            "icon": icon_map.get(decision, "rate_review"),
+            "title": f"Human Review: {decision}",
+            "detail": f"{disp_label}. {rationale}" if rationale else disp_label,
+            "user": a_row['CREATED_BY'],
+            "timestamp": a_row['CREATED_AT'],
+        })
+
+    return events
+
+
+def render_audit_trail(events):
+    if not events:
+        st.markdown("<div style='padding:16px; color:#8C7C83; font-size:13px;'>No activity recorded yet.</div>", unsafe_allow_html=True)
+        return
+
+    html = "<div style='display:flex; flex-direction:column; gap:0;'>"
+    for i, ev in enumerate(events):
+        is_last = i == len(events) - 1
+        ts = ev['timestamp']
+        if isinstance(ts, str):
+            ts_display = ts[:16]
+        elif hasattr(ts, 'strftime'):
+            ts_display = ts.strftime('%Y-%m-%d %H:%M')
+        else:
+            ts_display = str(ts)[:16]
+
+        connector = "" if is_last else "<div style='width:2px; background:#EFEBEB; height:16px; margin-left:11px;'></div>"
+
+        html += f"""
+        <div style='display:flex; align-items:flex-start; gap:12px;'>
+            <div style='display:flex; flex-direction:column; align-items:center; flex-shrink:0;'>
+                <div style='width:24px; height:24px; border-radius:50%; background:#F8F5F5; display:flex; align-items:center; justify-content:center; border:1px solid #EFEBEB;'>
+                    <span class='material-symbols-rounded' style='font-size:14px; color:#4A192C;'>{ev['icon']}</span>
+                </div>
+                {connector}
+            </div>
+            <div style='padding-bottom:{("16px" if not is_last else "0")};'>
+                <div style='font-size:13px; font-weight:700; color:var(--argus-text-dark); line-height:24px;'>{ev['title']}</div>
+                <div style='font-size:12px; color:var(--argus-text-muted); line-height:1.4; margin-top:2px;'>{ev['detail']}</div>
+                <div style='font-size:10px; color:#8C7C83; margin-top:4px; font-weight:600;'>{ev['user']} &middot; {ts_display}</div>
+            </div>
+        </div>"""
+    html += "</div>"
+    st.markdown(html, unsafe_allow_html=True)
 
 COUNTRY_FLAGS = {
     'AF':'1f1e6-1f1eb','AL':'1f1e6-1f1f1','DZ':'1f1e9-1f1ff','AR':'1f1e6-1f1f7',
@@ -44,6 +135,7 @@ STATUS_FG = {
 CASE_QUERY = """
     SELECT
         r.RESULT_ID AS ID,
+        r.SCREENING_REQUEST_ID,
         r.FULL_NAME_SCREENED AS ENTITY_NAME,
         CASE WHEN i.GENDER IS NOT NULL THEN 'INDIVIDUAL' ELSE 'ENTITY' END AS TYPE,
         COALESCE(i.COUNTRY, 'N/A') AS COUNTRY,
@@ -312,6 +404,11 @@ if selected_case is not None:
                     </div>
                 """, unsafe_allow_html=True)
 
+        with st.container(border=True):
+            st.markdown("<h4 style='margin:0 0 16px 0;'>Activity Log</h4>", unsafe_allow_html=True)
+            audit_events = fetch_case_audit_trail(case_id, row.get('SCREENING_REQUEST_ID', ''), row)
+            render_audit_trail(audit_events)
+
 
 else:
     cases_df = session.sql(CASE_QUERY + """
@@ -367,43 +464,75 @@ else:
 
     st.markdown("""
 <style>
-.case-btn button {
-    background: #fff !important;
-    border: 1px solid #EFEBEB !important;
-    border-radius: 8px !important;
-    color: var(--argus-text-dark) !important;
-    font-family: 'Courier New', monospace !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    text-align: left !important;
-    padding: 14px 20px !important;
-    white-space: pre !important;
-    transition: all 0.2s ease !important;
-    margin-bottom: 2px !important;
+.row-block [data-testid="stHorizontalBlock"] {
+    gap: 0 !important;
+    align-items: stretch !important;
 }
-.case-btn button:hover {
-    background: #fafafa !important;
-    border-left: 4px solid #4A192C !important;
+.row-block [data-testid="stColumn"] {
+    padding: 0 !important;
+}
+.row-block [data-testid="stColumn"]:last-child button {
+    height: 84px !important;
+    min-height: 84px !important;
+    border: 1px solid #EFEBEB !important;
+    border-left: none !important;
+    border-radius: 0 8px 8px 0 !important;
+    background: #fff !important;
+    color: var(--argus-text-muted) !important;
+    transition: all 0.2s ease !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.row-block [data-testid="stColumn"]:last-child button:hover {
+    background: #f3f3f5 !important;
+    color: #4A192C !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-    header = f"{'Entity':<30} {'Risk':>6}  {'Similarity':>10}  {'Status':<18}"
-    st.markdown(f"<div style='padding:14px 24px; border-bottom:2px solid #EFEBEB; margin-bottom:4px; font-family:Courier New,monospace; font-size:13px; font-weight:700; color:#8C7C83; white-space:pre;'>{header}</div>", unsafe_allow_html=True)
+    st.markdown("""
+<div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
+    <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
+    <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
+    <div style="width: 14%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
+    <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+</div>
+""", unsafe_allow_html=True)
 
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
     else:
         for idx, row in filtered_df.iterrows():
+            color = STATUS_BG.get(row["STATUS"], "#ffdad6")
+            txt_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
-            name = row['ENTITY_NAME'][:28].ljust(28)
-            risk = f"{row['RISK_SCORE']:>6.1f}"
-            sim = f"{row['NAME_SIMILARITY']:>10}"
-            status = label[:18].ljust(18)
-            btn_label = f"{name}  {risk}  {sim}  {status}"
+            rid = row['ID']
 
-            st.markdown("<div class='case-btn'>", unsafe_allow_html=True)
-            if st.button(btn_label, key=f"c_{row['ID']}", use_container_width=True):
-                st.query_params["selected_case"] = row["ID"]
-                st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
+            col_row, col_btn = st.columns([9, 1])
+            with col_row:
+                st.markdown(f"""
+<div style="height:84px; box-sizing:border-box; border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif;">
+<div style="width:42%; display:flex; flex-direction:column;">
+<div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
+<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width:20px; height:20px;" />
+<span style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
+</div>
+<span style="font-size:10px; color:var(--argus-text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:32px;">{row['TYPE']}</span>
+</div>
+<div style="width:24%;">
+<div style="width:100%; max-width:140px; height:6px; background:var(--argus-accent-light); border-radius:3px; overflow:hidden; margin-bottom:4px;">
+<div style="width:{row['RISK_SCORE']}%; height:100%; background:var(--argus-primary); border-radius:3px;"></div>
+</div>
+<div style="font-size:11px; font-weight:700; color:var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
+</div>
+<div style="width:14%;">
+<div style="font-weight:700; font-size:14px; color:var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
+</div>
+<div style="width:20%; text-align:center;">
+<span style="background:{color}; color:{txt_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;">{label}</span>
+</div>
+</div>""", unsafe_allow_html=True)
+            with col_btn:
+                if st.button("›", key=f"c_{rid}", use_container_width=True):
+                    st.query_params["selected_case"] = rid
+                    st.rerun()
