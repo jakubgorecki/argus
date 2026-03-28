@@ -367,75 +367,43 @@ else:
 
     st.markdown("""
 <style>
-.row-block [data-testid="stHorizontalBlock"] {
-    gap: 0 !important;
-    align-items: stretch !important;
-}
-.row-block [data-testid="stColumn"] {
-    padding: 0 !important;
-}
-.row-block [data-testid="stColumn"]:last-child button {
-    height: 84px !important;
-    min-height: 84px !important;
-    border: 1px solid #EFEBEB !important;
-    border-left: none !important;
-    border-radius: 0 8px 8px 0 !important;
+.case-btn button {
     background: #fff !important;
-    color: var(--argus-text-muted) !important;
+    border: 1px solid #EFEBEB !important;
+    border-radius: 8px !important;
+    color: var(--argus-text-dark) !important;
+    font-family: 'Courier New', monospace !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    text-align: left !important;
+    padding: 14px 20px !important;
+    white-space: pre !important;
     transition: all 0.2s ease !important;
-    margin: 0 !important;
-    padding: 0 !important;
+    margin-bottom: 2px !important;
 }
-.row-block [data-testid="stColumn"]:last-child button:hover {
-    background: #f3f3f5 !important;
-    color: #4A192C !important;
+.case-btn button:hover {
+    background: #fafafa !important;
+    border-left: 4px solid #4A192C !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-    st.markdown("""
-<div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
-    <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
-    <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
-    <div style="width: 14%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
-    <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
-</div>
-""", unsafe_allow_html=True)
+    header = f"{'Entity':<30} {'Risk':>6}  {'Similarity':>10}  {'Status':<18}"
+    st.markdown(f"<div style='padding:8px 20px; border-bottom:2px solid #EFEBEB; margin-bottom:4px; font-family:Courier New,monospace; font-size:13px; font-weight:700; color:#8C7C83; white-space:pre;'>{header}</div>", unsafe_allow_html=True)
 
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
     else:
         for idx, row in filtered_df.iterrows():
-            color = STATUS_BG.get(row["STATUS"], "#ffdad6")
-            txt_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
-            rid = row['ID']
+            name = row['ENTITY_NAME'][:28].ljust(28)
+            risk = f"{row['RISK_SCORE']:>6.1f}"
+            sim = f"{row['NAME_SIMILARITY']:>10}"
+            status = label[:18].ljust(18)
+            btn_label = f"{name}  {risk}  {sim}  {status}"
 
-            col_row, col_btn = st.columns([9, 1])
-            with col_row:
-                st.markdown(f"""
-<div style="height:84px; box-sizing:border-box; border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif;">
-<div style="width:42%; display:flex; flex-direction:column;">
-<div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
-<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width:20px; height:20px;" />
-<span style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
-</div>
-<span style="font-size:10px; color:var(--argus-text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px; margin-left:32px;">{row['TYPE']}</span>
-</div>
-<div style="width:24%;">
-<div style="width:100%; max-width:140px; height:6px; background:var(--argus-accent-light); border-radius:3px; overflow:hidden; margin-bottom:4px;">
-<div style="width:{row['RISK_SCORE']}%; height:100%; background:var(--argus-primary); border-radius:3px;"></div>
-</div>
-<div style="font-size:11px; font-weight:700; color:var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
-</div>
-<div style="width:14%;">
-<div style="font-weight:700; font-size:14px; color:var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
-</div>
-<div style="width:20%; text-align:center;">
-<span style="background:{color}; color:{txt_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;">{label}</span>
-</div>
-</div>""", unsafe_allow_html=True)
-            with col_btn:
-                if st.button("›", key=f"c_{rid}", use_container_width=True):
-                    st.query_params["selected_case"] = rid
-                    st.rerun()
+            st.markdown("<div class='case-btn'>", unsafe_allow_html=True)
+            if st.button(btn_label, key=f"c_{row['ID']}", use_container_width=True):
+                st.query_params["selected_case"] = row["ID"]
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
