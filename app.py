@@ -11,11 +11,12 @@ dashboard = st.Page("views/dashboard.py", title="Dashboard", icon=":material/das
 cases = st.Page("views/cases.py", title="Cases", icon=":material/work:")
 integrations = st.Page("views/integrations.py", title="Integrations", icon=":material/extension:")
 reports = st.Page("views/reports.py", title="Reports", icon=":material/analytics:")
+db_editor = st.Page("views/db_editor.py", title="DB Admin", icon=":material/database:")
 debugger = st.Page("views/debugger.py", title="Debugger", icon=":material/bug_report:")
 
 st.logo("logo.svg", icon_image="icon.svg", size="large")
 
-pg = st.navigation([dashboard, cases, integrations, reports, debugger])
+pg = st.navigation([dashboard, cases, integrations, reports, db_editor, debugger])
 
 with open("style.css") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)

@@ -32,44 +32,76 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         
     row = case_data.iloc[0]
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    header_col1, header_col2, header_col3 = st.columns([1, 8, 3], vertical_alignment="bottom")
-
-    with header_col1:
-        st.markdown(f"""
-        <div style="width: 80px; height: 80px; background-color: #471524; color: white; border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            {row['ENTITY_NAME'][:2].upper()}
+    # Header Section
+    st.markdown("<div style='margin-top: -32px;'></div>", unsafe_allow_html=True)
+    
+    # Status and Name
+    flag_color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
+    text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
+    flag_label = "HIGH RISK HIT" if row["RISK_SCORE"] > 70 else ("REVIEW TRIGGERED" if row["RISK_SCORE"] > 40 else "CLEARED")
+    
+    st.markdown(f"""
+        <div style='display:flex; align-items:center; gap: 12px; margin-bottom: 8px;'>
+            <span style='background-color: {flag_color}; color: {text_color}; padding: 4px 12px; border-radius: 16px; font-size: 11px; font-weight: bold; display:inline-flex; align-items:center; gap:4px;'>
+                <span class='material-symbols-rounded' style='font-size:14px;'>flag</span> {flag_label}
+            </span>
+            <span style='color: #8C7C83; font-size: 13px; white-space: nowrap;'>Updated {row['LAST_ACTIVITY']}</span>
         </div>
+        <h1 style='margin:0; padding:0; color: #2c0210; font-size: 48px; line-height: 1.1;'>{row['ENTITY_NAME']}</h1>
+    """, unsafe_allow_html=True)
+
+    # Details & Actions Row
+    det_col1, det_col2 = st.columns([7, 3], vertical_alignment="center")
+    
+    with det_col1:
+        st.markdown(f"""
+            <div style='display:flex; align-items:center; gap: 16px; margin-top: 12px; color: #524346; font-size: 14px;'>
+                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>fingerprint</span> <b>ID:</b> {row['ID']}</div>
+                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>location_on</span> <b>Location:</b> {row['COUNTRY']}</div>
+                <div style='display:flex; align-items:center; gap:6px;'><span class='material-symbols-rounded' style='font-size:18px; color:#8C7C83;'>calendar_today</span> <b>DOB:</b> {row['DOB']}</div>
+            </div>
         """, unsafe_allow_html=True)
 
-    with header_col2:
-        flag_color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
-        text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
-        flag_label = "HIGH RISK HIT" if row["RISK_SCORE"] > 70 else ("REVIEW TRIGGERED" if row["RISK_SCORE"] > 40 else "CLEARED")
-        
-        st.markdown(f"<div style='display:flex; align-items:center; gap: 12px; margin-bottom: 4px;'><h1 style='margin:0; padding:0; color: #2c0210;'>{row['ENTITY_NAME']}</h1><span style='background-color: {flag_color}; color: {text_color}; padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: bold; display:flex; align-items:center; gap:4px;'><span class='material-symbols-rounded' style='font-size:16px;'>flag</span> {flag_label}</span></div>", unsafe_allow_html=True)
-        st.caption(f"**ID:** {row['ID']} &nbsp;&nbsp;•&nbsp;&nbsp; **Location:** {row['COUNTRY']} &nbsp;&nbsp;•&nbsp;&nbsp; **Created:** {row['CREATED_DATE']}")
-
-    with header_col3:
+    with det_col2:
         st.markdown("""
         <style>
-        .icon-btn { color: #8C7C83; font-size: 24px; cursor: pointer; transition: color 0.15s ease; }
-        .icon-btn:hover { color: #2c0210; }
+        .icon-btn-container { border: 1px solid #EFEBEB; border-radius: 8px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: all 0.2s ease; background: white; white-space: nowrap; text-decoration: none !important; }
+        .icon-btn-container:hover { background: #fafafa; border-color: #d1d1d1; }
+        .icon-btn-text { font-size: 13px; font-weight: 600; color: #2c0210; }
         </style>
-        <div style='display:flex; gap: 16px; justify-content:flex-end; align-items:center; height:100%; padding-bottom:4px;'>
-            <span class='material-symbols-rounded icon-btn' title="Share Case">share</span>
-            <span class='material-symbols-rounded icon-btn' title="Print View">print</span>
+        <div style='display:flex; gap: 8px; justify-content:flex-end; align-items:center; margin-top: 12px;'>
+            <div class="icon-btn-container" title="Share Case">
+                <span class='material-symbols-rounded' style='font-size:18px; color:#2c0210;'>share</span>
+                <span class="icon-btn-text">Share Case</span>
+            </div>
+            <div class="icon-btn-container" onclick="window.print()" title="Export PDF">
+                <span class='material-symbols-rounded' style='font-size:18px; color:#2c0210;'>print</span>
+                <span class="icon-btn-text">Export PDF</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+    # Client & Product Row
+    st.markdown(f"""
+        <div style='display:flex; align-items:center; gap: 0px; margin-top: 16px; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid #EFEBEB;'>
+            <div style='display:flex; align-items:center; gap:8px; padding-right: 20px; border-right: 1px solid #EFEBEB;'>
+                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>business</span> 
+                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>CLIENT:</span>
+                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row['CLIENT']}</span>
+            </div>
+            <div style='display:flex; align-items:center; gap:8px; padding-left: 20px;'>
+                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>payment</span> 
+                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>PRODUCT:</span>
+                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row['PRODUCT']}</span>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
-    col_left, col_right = st.columns([7, 4])
+    # Layout: Workload on Left, AI Insight on Right
+    col_left, col_right = st.columns([8, 3])
 
     with col_left:
-        with st.container(border=True):
-            st.markdown(f"<div style='display:flex; gap:16px; align-items:flex-start;'><div style='background-color:#2c0210; color:white; padding:8px; border-radius:8px;'><span class='material-symbols-rounded'>auto_awesome</span></div><div><h4 style='margin:0; color:#2c0210;'>{row['AI_INSIGHT_TITLE']}</h4><p style='margin-top:8px; font-size:14px; color:#1a1c1d;'>{row['AI_INSIGHT_DESC']}</p></div></div>", unsafe_allow_html=True)
-
+        # 1. Watchlist Hits Table (with overflow fix)
         with st.container(border=True):
             conn_wl = get_db_connection()
             wl_hits_df = pd.read_sql(f"SELECT * FROM watchlist_hits WHERE CASE_ID = '{case_id}'", conn_wl)
@@ -78,8 +110,8 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Watchlist Hit Details</h4><span style='font-size:10px; font-weight:600; color:#524346; letter-spacing: 0.5px; text-transform: uppercase;'>Source: World-Check Global</span></div>", unsafe_allow_html=True)
             
             if not wl_hits_df.empty:
-                table_html = """<div style="border-radius: 8px; overflow: hidden; border: 1px solid #EFEBEB; width: 100%;">
-<table style="width: 100%; text-align: left; border-collapse: collapse; font-family: 'Inter', sans-serif;">
+                table_html = """<div style="border-radius: 8px; overflow-x: auto; border: 1px solid #EFEBEB; width: 100%;">
+<table style="width: 100%; text-align: left; border-collapse: collapse; font-family: 'Inter', sans-serif; min-width: 600px;">
 <thead style="background-color: #f3f3f5; border-bottom: 1px solid #EFEBEB;">
 <tr>
 <th style="padding: 12px 24px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #524346; font-weight: 700;">Attribute</th>
@@ -107,48 +139,85 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                 st.markdown(table_html, unsafe_allow_html=True)
             else:
                 st.markdown("<div style='padding:16px; background-color:#f3f3f5; border-radius:8px; font-size:14px; color:#524346;'>No watchlist attributes flagged for this entity.</div>", unsafe_allow_html=True)
-            
-        st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-top:24px; margin-bottom: 16px;'><h3 style='margin:0; font-size: 18px; font-weight: 700; color: #1a1c1d;'>Decision History</h3><span style='font-size: 14px; font-weight: 600; color: #471524; cursor: pointer;'>View Audit Log</span></div>", unsafe_allow_html=True)
-            
-        conn_hist = get_db_connection()
-        history_df = pd.read_sql(f"SELECT * FROM decision_history WHERE CASE_ID = '{case_id}' ORDER BY SORT_ORDER DESC", conn_hist)
-        conn_hist.close()
-        
-        timeline_parts = ["<div style='margin-left: 20px; border-left: 2px solid #e2e2e4; position: relative; padding-bottom: 4px; font-family: \"Inter\", sans-serif;'>"]
-        for idx, h_row in history_df.iterrows():
-            title = h_row['TITLE']
-            desc = h_row['DESCRIPTION']
-            date = h_row['TIMESTAMP']
-            dot_color = "#2c0210" if idx == 0 else "#e2e2e4" 
-            margin_bottom = "24px" if idx < len(history_df) - 1 else "0"
-            timeline_parts.append(f"""
-<div style='position: relative; padding-left: 24px; margin-bottom: {margin_bottom};'>
-    <div style='position: absolute; left: -9px; top: 0px; width: 16px; height: 16px; border-radius: 50%; background-color: {dot_color}; box-shadow: 0 0 0 4px #f9f9fb;'></div>
-    <div style='display: flex; flex-direction: column;'>
-        <span style='font-size: 10px; text-transform: uppercase; color: #524346; font-weight: 600; letter-spacing: 0.5px;'>{date}</span>
-        <p style='margin: 4px 0 2px 0; font-size: 14px; font-weight: 600; color: #1a1c1d;'>{title}</p>
-        <p style='margin: 0; font-size: 12px; color: #524346;'>{desc}</p>
-    </div>
-</div>
-""")
-        timeline_parts.append("</div>")
-        st.markdown("".join(timeline_parts), unsafe_allow_html=True)
 
-        # Unified Review Decision Module
+        # 2. Evidence & Files Card
+        with st.container(border=True):
+            conn_ev = get_db_connection()
+            ev_df = pd.read_sql(f"SELECT * FROM evidence_files WHERE CASE_ID = '{case_id}'", conn_ev)
+            conn_ev.close()
+            
+            st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center;'><h4 style='margin:0;'>Evidence & Files</h4><span style='background-color:#e8dddf; color:#696163; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;'>{len(ev_df)} FILES</span></div>", unsafe_allow_html=True)
+            st.divider()
+            
+            # Show files in a horizontal flex grid
+            grid_html = "<div style='display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;'>"
+            for idx, e_row in ev_df.iterrows():
+                fname = e_row['FILE_NAME']
+                fdate = e_row['UPLOAD_DATE']
+                icon = "receipt_long" if ".pdf" in fname else "image"
+                grid_html += f"""
+                <div style='display:flex; align-items:center; gap:12px; padding:12px; background-color:#f8f9fa; border-radius:8px; border: 1px solid #EFEBEB;'>
+                    <div style='background-color:#fff; color:#1a1c1d; width:32px; height:32px; border-radius:6px; display:flex; align-items:center; justify-content:center;'><span class='material-symbols-rounded' style='font-size:20px;'>{icon}</span></div>
+                    <div style='overflow:hidden;'>
+                        <div style='font-size:12px; font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;'>{fname}</div>
+                        <div style='font-size:10px; color:#524346;'>{fdate}</div>
+                    </div>
+                </div>"""
+            grid_html += "</div>"
+            st.markdown(grid_html, unsafe_allow_html=True)
+            
+            st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
+            st.file_uploader("Drop additional evidence", accept_multiple_files=True, label_visibility="collapsed")
+
+        # 3. Decision History Card
+        with st.container(border=True):
+            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Decision History</h4><span style='font-size: 13px; font-weight: 600; color: #471524; cursor: pointer;'>View Audit Log</span></div>", unsafe_allow_html=True)
+            
+            conn_hist = get_db_connection()
+            history_df = pd.read_sql(f"SELECT * FROM decision_history WHERE CASE_ID = '{case_id}' ORDER BY SORT_ORDER DESC", conn_hist)
+            conn_hist.close()
+            
+            timeline_parts = ["<div style='margin-left: 20px; border-left: 2px solid #e2e2e4; position: relative; padding-bottom: 4px; font-family: \"Inter\", sans-serif;'>"]
+            for idx, h_row in history_df.iterrows():
+                title = h_row['TITLE']
+                desc = h_row['DESCRIPTION']
+                date = h_row['TIMESTAMP']
+                dot_color = "#2c0210" if idx == 0 else "#e2e2e4" 
+                margin_bottom = "24px" if idx < len(history_df) - 1 else "0"
+                timeline_parts.append(f"""
+                <div style='position: relative; padding-left: 24px; margin-bottom: {margin_bottom};'>
+                    <div style='position: absolute; left: -9px; top: 0px; width: 16px; height: 16px; border-radius: 50%; background-color: {dot_color}; box-shadow: 0 0 0 4px #fff;'></div>
+                    <div style='display: flex; flex-direction: column;'>
+                        <span style='font-size: 10px; text-transform: uppercase; color: #524346; font-weight: 600; letter-spacing: 0.5px;'>{date}</span>
+                        <p style='margin: 4px 0 2px 0; font-size: 14px; font-weight: 600; color: #1a1c1d;'>{title}</p>
+                        <p style='margin: 0; font-size: 12px; color: #524346;'>{desc}</p>
+                    </div>
+                </div>
+                """)
+            timeline_parts.append("</div>")
+            # Join and strip extra whitespace to prevent markdown code block triggers
+            full_html = "".join([t.strip() for t in timeline_parts])
+            st.markdown(full_html, unsafe_allow_html=True)
+
+        # 4. Review Decision Form (Now inside col_left to match width)
         st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
         with st.form(key=f"review_form_{case_id}", clear_on_submit=True, border=True):
-            new_note = st.text_area("Leave a comment with your review decision...", label_visibility="collapsed", placeholder="Leave a comment with your review decision...")
+            st.markdown("<h4 style='margin-bottom:16px;'>Record Review Decision</h4>", unsafe_allow_html=True)
+            new_note = st.text_area("Rationale", label_visibility="collapsed", placeholder="Provide rationale for your decision...")
             
             st.markdown("<hr style='margin: 16px 0; border: none; border-top: 1px solid #EFEBEB;'>", unsafe_allow_html=True)
             
-            rc1, rc2, rc3, rc4 = st.columns([3, 1.2, 2.5, 2.5], vertical_alignment="center")
+            rc1, rc2, rc3 = st.columns([5, 4, 3], vertical_alignment="center")
             with rc1:
-                st.markdown("<div style='display:flex; align-items:center; gap:8px;'><span class='material-symbols-rounded' style='color:#4A192C; font-size:20px;'>verified_user</span><span style='font-size:14px; font-weight:700; color:#1a1c1d;'>Your Review Decision</span></div>", unsafe_allow_html=True)
+                st.markdown("""
+                <div style='display:flex; align-items:center; gap:8px;'>
+                    <span class='material-symbols-rounded' style='color:#2c0210; font-size:20px;'>verified_user</span>
+                    <span style='font-size:14px; font-weight:600; color:#1a1c1d;'>Your Review Recommendation</span>
+                </div>
+                """, unsafe_allow_html=True)
             with rc2:
-                st.markdown("<div style='font-size:14px; font-weight:700; color:#1a1c1d; text-align:right;'>Recommend</div>", unsafe_allow_html=True)
-            with rc3:
                 decision = st.selectbox("Decision", ["Cleared", "Escalate", "Reject & Block"], label_visibility="collapsed")
-            with rc4:
+            with rc3:
                 submit_review = st.form_submit_button("Submit Review", type="primary", use_container_width=True)
                 
             if submit_review:
@@ -163,7 +232,7 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                 max_order = int(cur_hist['m'].iloc[0]) if not cur_hist.empty and pd.notna(cur_hist['m'].iloc[0]) else 0
                 
                 conn_n.execute("INSERT INTO decision_history (CASE_ID, SORT_ORDER, TIMESTAMP, TITLE, DESCRIPTION) VALUES (?, ?, ?, ?, ?)",
-                               (case_id, max_order + 1, now_str, title_str, f"Analyst Julian Thome ({decision}): " + desc_str))
+                               (case_id, max_order + 1, now_str, title_str, f"Analyst {st.session_state.get('user_name', 'Julian Thome')} ({decision}): " + desc_str))
                 
                 new_stat = "AUTO-CLEARED" if decision == "Cleared" else ("Investigation" if decision == "Escalate" else "Blocked")
                 conn_n.execute("UPDATE cases SET STATUS = ? WHERE ID = ?", (new_stat, case_id))
@@ -172,26 +241,21 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                 conn_n.close()
                 st.rerun()
 
-    with col_right:
-        # Re-assigned Resolution block to timeline builder
-        pass
 
+    with col_right:
+        # AI Insight (Only thing on the right)
         with st.container(border=True):
-            conn_ev = get_db_connection()
-            ev_df = pd.read_sql(f"SELECT * FROM evidence_files WHERE CASE_ID = '{case_id}'", conn_ev)
-            conn_ev.close()
-            
-            st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center;'><h4 style='margin:0;'>Evidence & Files</h4><span style='background-color:#e8dddf; color:#696163; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;'>{len(ev_df)} FILES</span></div>", unsafe_allow_html=True)
-            st.divider()
-            
-            for idx, e_row in ev_df.iterrows():
-                fname = e_row['FILE_NAME']
-                fdate = e_row['UPLOAD_DATE']
-                icon = "receipt_long" if ".pdf" in fname else "image"
-                st.markdown(f"<div style='display:flex; align-items:center; gap:12px; margin-bottom:12px;'><div style='background-color:#f3f3f5; color:#1a1c1d; width:40px; height:40px; border-radius:8px; display:flex; align-items:center; justify-content:center;'><span class='material-symbols-rounded'>{icon}</span></div><div><div style='font-size:12px; font-weight:bold;'>{fname}</div><div style='font-size:10px; color:#524346;'>{fdate}</div></div></div>", unsafe_allow_html=True)
-            
-            st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
-            st.file_uploader("Drop additional evidence", accept_multiple_files=True, label_visibility="collapsed")
+            st.markdown(f"""
+                <div style='display:flex; flex-direction:column; gap:16px;'>
+                    <div style='background-color:#2c0210; color:white; padding:12px; border-radius:12px; width: fit-content;'>
+                        <span class='material-symbols-rounded'>auto_awesome</span>
+                    </div>
+                    <div>
+                        <h4 style='margin:0; color:#2c0210; font-size: 18px;'>{row['AI_INSIGHT_TITLE']}</h4>
+                        <p style='margin-top:12px; font-size:14px; color:#1a1c1d; line-height: 1.5;'>{row['AI_INSIGHT_DESC']}</p>
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
 
 
 
@@ -258,7 +322,8 @@ else:
 """, unsafe_allow_html=True)
     
     for idx, row in cases_df.iterrows():
-        color = "#E53E3E" if row['STATUS'] == "Pending Review" else ("#D69E2E" if "Investigation" in row['STATUS'] else "#38A169")
+        color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
+        text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
         
         card_html = f"""<a href="?selected_case={row['ID']}" target="_self" class="case-card">
 <div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
@@ -280,9 +345,8 @@ else:
 <div style="font-weight: 700; font-size: 14px; color: #1a1c1d;">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-block;">{row['STATUS']}</span>
+<span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block;">{row['STATUS']}</span>
 </div>
 </div>
 </a>"""
         st.markdown(card_html, unsafe_allow_html=True)
-

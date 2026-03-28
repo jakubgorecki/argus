@@ -52,7 +52,7 @@ def render_breadcrumbs(path_data):
     bc_html = "<span style='color: #8C7C83; font-size: 16px;'>›</span>".join(html_parts)
     
     st.markdown(f"""
-    <div style="font-size: 14px; font-weight: 500; font-family: 'Inter', sans-serif; padding-left: 4px; margin-bottom: 12px; display: flex; align-items: center; gap: 4px;">
+    <div style="font-size: 11px; font-weight: 700; font-family: 'Inter', sans-serif; text-transform: uppercase; letter-spacing: 1px; color: #8C7C83; padding-left: 4px; margin-bottom: 8px; display: flex; align-items: center; gap: 4px;">
         {bc_html}
     </div>
     """, unsafe_allow_html=True)

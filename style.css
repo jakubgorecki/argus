@@ -3,9 +3,9 @@
 
 
 /* Hide default Streamlit Deploy Header */
-[data-testid="stHeader"] {
+/* [data-testid="stHeader"] {
     display: none;
-}
+} */
 
 /* Make Topbar Sticky natively by targeting the container housing our anchor */
 div[data-testid="stVerticalBlock"]:has(#argus-topbar) {
@@ -113,4 +113,25 @@ button {
 
 .nav-breadcrumbs span {
     color: #D3C9CB;
+}
+
+/* Print Styles */
+@media print {
+    section[data-testid="stSidebar"],
+    div[data-testid="stHeader"],
+    div[data-testid="stVerticalBlock"]:has(#argus-topbar),
+    .stApp > header {
+        display: none !important;
+    }
+
+    .main .block-container {
+        padding: 0 !important;
+        max-width: 100% !important;
+    }
+
+    /* Ensure background colors and colors are preserved in print */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 }

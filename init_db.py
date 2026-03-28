@@ -33,13 +33,13 @@ def init_mock_db(db_path="argus.db"):
             "1f1f8-1f1ea.png"  # SE
         ],
         "RISK_SCORE": [88.0, 42.0, 12.0, 95.0, 65.0, 28.0, 82.0, 15.0],
-        "AI_CONFIDENCE": ["HIGH", "MED", "HIGH", "HIGH", "LOW", "HIGH", "MED", "HIGH"],
+        "AI_CONFIDENCE": ["94%", "88%", "99%", "91%", "85%", "96%", "82%", "98%"],
         "STATUS": [
             "Pending Review", "Investigation", "AUTO-CLEARED",
             "Pending Review", "Investigation", "AUTO-CLEARED",
             "Pending Review", "AUTO-CLEARED"
         ],
-        "LAST_ACTIVITY": ["12 r...", "1 h...", "1 ...", "5 m...", "2 h...", "4 h...", "10 m...", "1 d..."],
+        "LAST_ACTIVITY": ["12 mins ago", "1 hour ago", "1 day ago", "5 mins ago", "2 hours ago", "4 hours ago", "10 mins ago", "1 day ago"],
         "CREATED_DATE": [
             "Oct 24, 2023", "Nov 12, 2023", "Jan 05, 2024",
             "Feb 10, 2024", "Mar 01, 2024", "Mar 15, 2024",
@@ -47,6 +47,14 @@ def init_mock_db(db_path="argus.db"):
         ],
         "LAT": [51.5072, 51.1657, 22.3193, 39.9042, 25.2048, 40.7128, 4.6097, 59.3293],
         "LON": [-0.1276, 10.4515, 114.1694, 116.4074, 55.2708, -74.0060, -74.0817, 18.0686],
+        "CLIENT": ["Porsche", "Circle K", "Pleo", "Swile", "Qred", "Mynt", "Allpay", "Indo"],
+        "PRODUCT": [
+            "Co-branded Credit Card", "Fleet Loyalty Card", 
+            "Corporate Spend Card", "Employee Benefits Card",
+            "SME Business Card", "Unified Spend Solution",
+            "Prepaid Card Solution", "Buy Now Pay Later (BNPL)"
+        ],
+        "DOB": ["12 May 1984", "04 Nov 1962", "Est. 2005", "10 Feb 1990", "01 Mar 1975", "Est. 2015", "20 Mar 1980", "Est. 1995"],
         "AI_INSIGHT_TITLE": [
             "High Probability False Positive", "Medium Risk Sanctions Review", "Low Risk Pattern",
             "Critical PEP Match", "Anomalous Transaction Volume", "Corporate Clean Pattern",

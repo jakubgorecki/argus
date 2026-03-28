@@ -32,4 +32,4 @@ def render_topbar():
 
 def render_breadcrumbs(current_page: str):
     # Native Streamlit Breadcrumb implementation (visual)
-    st.caption(f"📍 Enfuce Compliance / **{current_page}**")
+    st.caption(f"Enfuce Compliance / **{current_page}**")
