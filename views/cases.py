@@ -223,7 +223,6 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             st.markdown(full_html, unsafe_allow_html=True)
 
         # 4. Review Decision Form (Now inside col_left to match width)
-        st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
         with st.form(key=f"review_form_{case_id}", clear_on_submit=True, border=True):
             st.markdown("<h4 style='margin-bottom:16px;'>Record Review Decision</h4>", unsafe_allow_html=True)
             new_note = st.text_area("Rationale", label_visibility="collapsed", placeholder="Provide rationale for your decision...")
@@ -313,7 +312,8 @@ else:
     # 1. Filtering Logic
     f_col1, f_col2, f_col3, f_col_empty, f_col4 = st.columns([2, 2, 2, 5, 3])
     with f_col1:
-        status_filter = st.selectbox("Filters", ["All Statuses", "Pending Review", "Investigation", "AUTO-CLEARED"], label_visibility="collapsed")
+        # Default to "Pending Review" as requested by user
+        status_filter = st.selectbox("Filters", ["All Statuses", "Pending Review", "Investigation", "AUTO-CLEARED"], index=1, label_visibility="collapsed")
     with f_col2:
         risk_filter = st.selectbox("Risk", ["Risk: All Levels", "High", "Medium", "Low"], label_visibility="collapsed")
     with f_col3:
@@ -323,6 +323,9 @@ else:
 
     # Apply Filters to cases_df
     filtered_df = cases_df.copy()
+    
+    # Sort by Risk Score descending by default (Importance & Urgency)
+    filtered_df = filtered_df.sort_values(by="RISK_SCORE", ascending=False)
     if status_filter != "All Statuses":
         filtered_df = filtered_df[filtered_df['STATUS'] == status_filter]
     

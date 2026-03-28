@@ -30,12 +30,19 @@ st.markdown("<br>", unsafe_allow_html=True)
 col_charts, col_metrics = st.columns([1.5, 1])
 
 with col_charts:
+    # Use a fixed height for the left container to match the right card
     with st.container(border=True):
-        st.markdown("<h4 style='display:inline-block; margin:0;'>AI Noise Reduction</h4>  <span style='background:#EFEBEB; color:#2D1A22; padding:4px 12px; border-radius:12px; font-weight:600; font-size:12px; margin-left:12px;'>+14.2%</span>", unsafe_allow_html=True)
+        st.markdown("""
+            <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;'>
+                <h4 style='margin:0;'>AI Noise Reduction</h4>
+                <div style='background:#F8F5F5; color:#4A192C; padding:6px 14px; border-radius:100px; font-weight:700; font-size:13px; border: 1px solid #EFEBEB;'>+14.2%</div>
+            </div>
+        """, unsafe_allow_html=True)
         st.caption("EFFICIENCY METRICS • LAST 24H")
         
         df_chart = get_chart_data()
-        st.bar_chart(df_chart, x="Day", y="Noise_Removed", color="#8C7C83", height=250)
+        # Adjusted height to fit within a 440px container (approx 340px for chart)
+        st.bar_chart(df_chart, x="Day", y="Noise_Removed", color="#9B8B91", height=335)
 
 with col_metrics:
     # Custom "Pending Review" Card matching user screenshot
@@ -45,19 +52,22 @@ with col_metrics:
     
     avatar_html = ""
     for idx, e_row in employees_df.iterrows():
-        ml = "-8px" if idx > 0 else "0px"
+        ml = "-12px" if idx > 0 else "0px"
         avatar_html += f"<img src='{e_row['AVATAR_URL']}' style='width:36px; height:36px; border-radius:50%; border:2px solid #4A192C; margin-left:{ml}; object-fit:cover;' />"
-    avatar_html += "<div style='background:#2D1A22; color:white; width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:11px; margin-left:-8px; border:2px solid #4A192C; font-weight:bold;'>+8</div>"
+    avatar_html += "<div style='background:#2D1A22; color:white; width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:11px; margin-left:-12px; border:2px solid #4A192C; font-weight:bold;'>+8</div>"
 
+    # Set height to 440px to match the container-wrapped chart on the left
     st.markdown(f"""
-        <div style='background-color: #4A192C; padding: 32px; border-radius: 12px; color: white; font-family: "Inter", sans-serif; position: relative;'>
-            <div style='display: flex; justify-content: space-between; align-items: flex-start;'>
-                <h3 style='margin: 0; font-size: 24px; font-weight: 600; color: white;'>Pending Review</h3>
-                <span class='material-symbols-rounded' style='font-size: 32px; color: white;'>assignment_late</span>
+        <div style='background-color: #4A192C; padding: 24px 36px; border-radius: 12px; color: white; font-family: "Inter", sans-serif; height: 440px; display: flex; flex-direction: column; justify-content: space-between;'>
+            <div>
+                <div style='display: flex; justify-content: space-between; align-items: flex-start;'>
+                    <h3 style='margin: 0; font-size: 20px; font-weight: 600; color: white; opacity: 0.9;'>Pending Review</h3>
+                    <span class='material-symbols-rounded' style='font-size: 28px; color: white;'>assignment_late</span>
+                </div>
+                <h1 style='margin: 24px 0 8px 0; font-size: 64px; font-weight: 700; color: white;'>124</h1>
+                <p style='margin: 0; font-size: 14px; color: #D3C9CB; line-height: 1.4;'>Priority cases awaiting officer verification and manual risk adjudication.</p>
             </div>
-            <h1 style='margin: 16px 0 8px 0; font-size: 64px; font-weight: 700; color: white;'>124</h1>
-            <p style='margin: 0; font-size: 16px; color: #D3C9CB;'>Priority cases awaiting officer verification.</p>
-            <div style='display: flex; margin-top: 24px; align-items: center;'>
+            <div style='display: flex; align-items: center;'>
                 {avatar_html}
             </div>
         </div>

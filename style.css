@@ -1,18 +1,44 @@
-/* Custom Global Styles for Argus Platform */
 @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0');
 
+/* 1. Global Color Variables for Reversibility (Light/Dark Mode Support) */
+:root {
+    --argus-primary: #4A192C;
+    --argus-secondary: #2c0210;
+    --argus-bg: #FAFAFA;
+    --argus-card-bg: #ffffff;
+    --argus-border: #EFEBEB;
+    --argus-text-dark: #1a1c1d;
+    --argus-text-muted: #8C7C83;
+    --argus-accent-light: #f3f3f5;
+}
 
-/* Hide default Streamlit Deploy Header */
-/* [data-testid="stHeader"] {
-    display: none;
-} */
+/* 2. White-labeling: Hide only Deploy and Menu, keeping header clean but functional */
+[data-testid="stAppDeployButton"], [data-testid="stMainMenu"], [data-testid="stToolbarActions"] {
+    display: none !important;
+}
 
-/* Make Topbar Sticky natively by targeting the container housing our anchor */
+header[data-testid="stHeader"] {
+    background: none !important;
+}
+
+/* Fix for 'messes with content': make header passive and zero-height */
+header[data-testid="stHeader"] {
+    pointer-events: none !important;
+    background-color: transparent !important;
+    height: 0 !important;
+    overflow: visible !important;
+}
+
+[data-testid="stExpandSidebarButton"] {
+    pointer-events: auto !important;
+}
+
+/* 3. Sticky Topbar with Dynamic Background */
 div[data-testid="stVerticalBlock"]:has(#argus-topbar) {
     position: sticky;
     top: 2rem;
     z-index: 1000;
-    background-color: #FAFAFA;
+    background-color: var(--st-background-color, var(--argus-bg));
     padding-bottom: 1rem;
     margin-bottom: -1rem;
 }
@@ -191,6 +217,5 @@ div[data-testid="stVerticalBlockBorderWrapper"] > div {
 
 /* Ensure decision form has same separation as containers */
 form[data-testid="stForm"] {
-    margin-top: 32px !important;
     border-radius: 12px !important;
 }
