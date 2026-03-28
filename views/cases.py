@@ -409,18 +409,14 @@ else:
 </style>
 """, unsafe_allow_html=True)
 
-    # Wrap the header in columns to align with the rows below
-    h_col1, h_col2 = st.columns()
-    
-    with h_col1:
-        st.markdown("""
-        <div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
-            <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
-            <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
-            <div style="width: 14%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
-            <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("""
+<div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
+    <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
+    <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
+    <div style="width: 14%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
+    <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+</div>
+""", unsafe_allow_html=True)
 
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
