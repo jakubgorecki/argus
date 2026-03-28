@@ -1,7 +1,41 @@
 import streamlit as st
+from snowflake.snowpark.context import get_active_session
+
+def _do_search(query):
+    session = get_active_session()
+    q = query.strip()
+    if not q:
+        return None, "Please enter a search term."
+
+    exact = session.sql(f"SELECT RESULT_ID FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS WHERE RESULT_ID = '{q.replace(chr(39), chr(39)+chr(39))}'").to_pandas()
+    if len(exact) == 1:
+        return exact['RESULT_ID'].iloc[0], None
+
+    like_q = q.replace("'", "''")
+    matches = session.sql(f"""
+        SELECT RESULT_ID, FULL_NAME_SCREENED
+        FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS
+        WHERE RESULT_ID ILIKE '%{like_q}%'
+           OR FULL_NAME_SCREENED ILIKE '%{like_q}%'
+        ORDER BY SCREENED_AT DESC
+        LIMIT 5
+    """).to_pandas()
+
+    if len(matches) == 1:
+        return matches['RESULT_ID'].iloc[0], None
+    elif len(matches) > 1:
+        return matches['RESULT_ID'].iloc[0], None
+    else:
+        return None, f"No cases found for \"{q}\"."
 
 def render_topbar():
     st.markdown("<div id='argus-topbar'></div>", unsafe_allow_html=True)
+
+    if st.session_state.get("_search_navigate"):
+        case_id = st.session_state.pop("_search_navigate")
+        st.query_params["selected_case"] = case_id
+        st.query_params["page"] = "cases"
+        st.rerun()
     
     col_search, col_spacer, col_profile = st.columns(
         [30, 40, 30], 
@@ -11,15 +45,19 @@ def render_topbar():
     with col_search:
         search_val = st.text_input(
             "Search input",
-            placeholder="Search by case identifier",
+            placeholder="Search by case ID or entity name",
             label_visibility="collapsed",
             icon=":material/search:",
             key="global_case_search",
         )
-        if search_val and search_val.strip():
-            st.query_params["selected_case"] = search_val.strip()
-            st.query_params["page"] = "cases"
-            st.rerun()
+        if search_val and search_val.strip() and search_val != st.session_state.get("_last_search"):
+            st.session_state["_last_search"] = search_val
+            result_id, error = _do_search(search_val)
+            if error:
+                st.toast(error, icon=":material/error:")
+            elif result_id:
+                st.session_state["_search_navigate"] = result_id
+                st.rerun()
         
     with col_profile:
         st.markdown("""

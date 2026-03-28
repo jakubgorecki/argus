@@ -41,11 +41,13 @@ if "selected_case" in st.query_params:
     if st.query_params.get("selected_case") == "":
         del st.query_params["selected_case"]
         st.session_state.pop("selected_case", None)
+        st.session_state.pop("_last_search", None)
         st.rerun()
     else:
         st.session_state["selected_case"] = st.query_params["selected_case"]
 else:
     st.session_state.pop("selected_case", None)
+    st.session_state.pop("_last_search", None)
 
 if pg.title == "Cases" and st.session_state.get('selected_case'):
     case_id = st.session_state.get('selected_case')
