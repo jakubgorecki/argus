@@ -88,8 +88,11 @@ def load_cases_data():
 
 cases_df = load_cases_data()
 
-if 'selected_case' in st.session_state and st.session_state['selected_case'] is not None:
-    case_id = st.session_state['selected_case']
+selected_case = st.query_params.get("selected_case", None) or st.session_state.get("selected_case", None)
+
+if selected_case is not None:
+    case_id = selected_case
+    st.session_state['selected_case'] = case_id
 
     case_data = session.sql(f"""
         SELECT
@@ -468,28 +471,34 @@ else:
             color = STATUS_BG.get(row["STATUS"], "#ffdad6")
             text_color = STATUS_FG.get(row["STATUS"], "#93000a")
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
+            flag_url = f"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}"
 
-            card_html = f"""<a href="cases?selected_case={row['ID']}" target="_self" class="case-row">
-<div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
-<div style="display: flex; flex-direction: column; width: 40%;">
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2px;">
-<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width: 20px; height: 20px;" alt="Flag" />
-<span style="font-weight: 600; font-size: 15px; color: var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
-</div>
-<span style="font-size: 10px; color: var(--argus-text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 32px;">{row['TYPE']}</span>
-</div>
-<div style="width: 25%;">
-<div style="width: 100%; max-width: 140px; height: 6px; background-color: var(--argus-accent-light); border-radius: 3px; overflow: hidden; margin-bottom: 4px;">
-<div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: var(--argus-primary); border-radius: 3px;"></div>
-</div>
-<div style="font-size: 11px; font-weight: 700; color: var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
-</div>
-<div style="width: 15%;">
-<div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['NAME_SIMILARITY']}</div>
-</div>
-<div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">{label}</span>
-</div>
-</div>
-</a>"""
-            st.markdown(card_html, unsafe_allow_html=True)
+            with st.container():
+                cols = st.columns([4, 2.5, 1.5, 1.5, 0.8])
+                with cols[0]:
+                    st.markdown(f"""
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <img src="{flag_url}" style="width:20px; height:20px;" />
+                            <div>
+                                <div style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</div>
+                                <div style="font-size:10px; color:var(--argus-text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">{row['TYPE']}</div>
+                            </div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                with cols[1]:
+                    st.markdown(f"""
+                        <div>
+                            <div style="width:100%; max-width:140px; height:6px; background:var(--argus-accent-light); border-radius:3px; overflow:hidden; margin-bottom:4px;">
+                                <div style="width:{row['RISK_SCORE']}%; height:100%; background:var(--argus-primary); border-radius:3px;"></div>
+                            </div>
+                            <div style="font-size:11px; font-weight:700; color:var(--argus-text-muted);">{row['RISK_SCORE']:.1f}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                with cols[2]:
+                    st.markdown(f"<div style='font-weight:700; font-size:14px; color:var(--argus-text-dark); padding-top:4px;'>{row['NAME_SIMILARITY']}</div>", unsafe_allow_html=True)
+                with cols[3]:
+                    st.markdown(f"<span style='background-color:{color}; color:{text_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;'>{label}</span>", unsafe_allow_html=True)
+                with cols[4]:
+                    if st.button("→", key=f"view_{row['ID']}"):
+                        st.query_params["selected_case"] = row['ID']
+                        st.rerun()
