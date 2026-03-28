@@ -26,7 +26,7 @@ def fetch_dash_cases():
             COALESCE(i.COUNTRY, 'N/A') AS COUNTRY,
             r.DISPOSITION AS STATUS,
             ROUND(r.COMPOSITE_SCORE * 100, 1) AS RISK_SCORE,
-            ROUND(r.NAME_SIMILARITY_SCORE * 100, 0) || '%' AS AI_CONFIDENCE,
+            ROUND(r.NAME_SIMILARITY_SCORE * 100, 0) || '%' AS NAME_SIMILARITY,
             r.MATCHED_ENTITY_NAME,
             r.MATCHED_LIST_ABBREVIATION,
             r.SCREENED_AT
@@ -65,13 +65,21 @@ with col_charts:
                 <div style='background:#F8F5F5; color:#4A192C; padding:6px 14px; border-radius:100px; font-weight:700; font-size:13px; border: 1px solid #EFEBEB;'>+14.2%</div>
             </div>
         """, unsafe_allow_html=True)
-        st.caption("AUTO-DISMISSED SCREENINGS PER DAY")
+        st.caption("Auto-Dismissed Screenings Per Day")
         
         df_chart = get_chart_data()
-        chart = alt.Chart(df_chart).mark_bar(color='#9B8B91', cornerRadiusTopLeft=3, cornerRadiusTopRight=3).encode(
-            x=alt.X('DAY:N', title='Date', axis=alt.Axis(labelAngle=-45)),
+        chart = alt.Chart(df_chart).mark_bar(
+            color='#9B8B91',
+            cornerRadiusTopLeft=3,
+            cornerRadiusTopRight=3
+        ).encode(
+            x=alt.X('DAY:N', title='Date', axis=alt.Axis(labelAngle=-45), scale=alt.Scale(paddingInner=0.1)),
             y=alt.Y('NOISE_REMOVED:Q', title='Number of cases')
-        ).properties(height=310)
+        ).properties(
+            height=310
+        ).configure_view(
+            strokeWidth=0
+        )
         st.altair_chart(chart, use_container_width=True)
 
 with col_metrics:
@@ -100,55 +108,3 @@ with col_metrics:
             </div>
         </div>
     """, unsafe_allow_html=True)
-    
-
-st.markdown("<br><br>", unsafe_allow_html=True)
-
-with st.container(border=True):
-    col_qtitle, col_qbuttons = st.columns([1, 1])
-    with col_qtitle:
-        st.subheader("Priority Case Queue")
-        st.caption("MANAGED INTELLIGENCE FEED")
-    with col_qbuttons:
-        st.markdown("<div style='display:flex; justify-content:flex-end; gap:8px;'>", unsafe_allow_html=True)
-        bc0, bc1, bc2 = st.columns([4, 1.5, 1.5])
-        with bc1:
-            st.button("FILTER", use_container_width=True)
-        with bc2:
-            st.button("EXPORT", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
-        
-    st.markdown("""<style>.dash-card { border:1px solid #EFEBEB; border-radius:8px; padding:16px 24px; background-color:#ffffff; transition:box-shadow 0.2s ease, background-color 0.2s ease; margin-bottom:12px; display:block; text-decoration:none !important; color:inherit !important; } .dash-card:hover { background-color:#fafafa; box-shadow:0 4px 12px rgba(0,0,0,0.05); }</style>""", unsafe_allow_html=True)
-    df = fetch_dash_cases().head(5)
-    for idx, row in df.iterrows():
-        status_labels = {'CRITICAL_MATCH': 'Critical Match', 'PENDING_HUMAN_REVIEW': 'Review Required', 'AUTO_DISMISSED': 'Auto-Dismissed', 'NO_MATCH': 'No Match'}
-        status_colors = {'CRITICAL_MATCH': '#E53E3E', 'PENDING_HUMAN_REVIEW': '#f57c00', 'AUTO_DISMISSED': '#38A169', 'NO_MATCH': '#D69E2E'}
-        label = status_labels.get(row['STATUS'], row['STATUS'])
-        color = status_colors.get(row['STATUS'], '#757575')
-        card_html = f"""<a href="cases?selected_case={row['ID']}" target="_self" class="dash-card">
-<div style="display: flex; align-items: center; justify-content: space-between; font-family: 'Inter', sans-serif;">
-<div style="display: flex; flex-direction: column; width: 40%;">
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
-<img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width: 24px; height: 24px;" alt="Flag" />
-<span style="font-weight: 700; font-size: 16px; color: var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
-</div>
-<span style="font-size: 11px; color: var(--argus-text-muted); font-weight: 700; letter-spacing: 0.5px; margin-left: 36px;">{row['TYPE']}</span>
-</div>
-<div style="width: 25%;">
-<div style="font-size: 10px; font-weight: 700; color: var(--argus-text-muted); opacity: 0.8; margin-bottom: 6px;">RISK SCORE: {row['RISK_SCORE']:.1f}</div>
-<div style="width: 100%; height: 6px; background-color: var(--argus-accent-light); border-radius: 3px; overflow: hidden;">
-<div style="width: {row['RISK_SCORE']}%; height: 100%; background-color: var(--argus-primary); border-radius: 3px;"></div>
-</div>
-</div>
-<div style="width: 15%;">
-<div style="font-size: 10px; font-weight: 700; color: var(--argus-text-muted); margin-bottom: 2px;">AI CONFIDENCE</div>
-<div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
-</div>
-<div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">{label}</span>
-</div>
-</div>
-</a>"""
-        st.markdown(card_html, unsafe_allow_html=True)
-        
-    st.markdown("<div style='text-align:center; margin-top:16px; font-size:14px; font-weight:600;'><a href='/cases' style='color:#2D1A22; text-decoration:none;'>View All Active Cases</a></div>", unsafe_allow_html=True)
