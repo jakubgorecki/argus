@@ -1,0 +1,116 @@
+/* Custom Global Styles for Argus Platform */
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0');
+
+
+/* Hide default Streamlit Deploy Header */
+[data-testid="stHeader"] {
+    display: none;
+}
+
+/* Make Topbar Sticky natively by targeting the container housing our anchor */
+div[data-testid="stVerticalBlock"]:has(#argus-topbar) {
+    position: sticky;
+    top: 2rem;
+    z-index: 1000;
+    background-color: #FAFAFA;
+    padding-bottom: 1rem;
+    margin-bottom: -1rem;
+}
+
+/* Adjusting paddings to align the Top Bar along the same horizontal axis as st.logo */
+div.block-container {
+    padding-top: 1.5rem !important;
+}
+
+/* Button radiuses */
+button {
+    border-radius: 8px !important;
+}
+
+/* Specific styling for the Search Bar input */
+[data-testid="stTextInput"] input {
+    background-color: #F8F5F5 !important;
+    border: none !important;
+    border-radius: 20px !important;
+    font-size: 14px !important;
+}
+
+/* Card metrics specific styling if needed, mainly relying on Streamlit's native metrics container */
+[data-testid="stMetricValue"] {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+/* Specific overrides for tables */
+[data-testid="stDataFrame"] {
+    background-color: transparent !important;
+}
+
+/* Top bar specific styling so search bar is right aligned natively */
+.topbar-profile {
+    display: flex; 
+    align-items: center; 
+    justify-content: flex-end; 
+    gap: 16px;
+    margin-top: -6px;
+}
+
+.topbar-profile-name {
+    display: flex;
+    flex-direction: column;
+    text-align: right;
+    line-height: 1.2;
+}
+
+.topbar-profile-name span:first-child {
+    font-weight: 600;
+    font-size: 16px;
+    color: #2D1A22;
+}
+
+.topbar-profile-name span:last-child {
+    font-size: 12px;
+    color: #8C7C83;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.topbar-avatar {
+    background-color: #2D1A22; 
+    color: white; 
+    border-radius: 50%; 
+    width: 44px; 
+    height: 44px; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    font-size: 16px; 
+    font-weight: bold;
+}
+
+/* Breadcrumbs Link styling */
+.nav-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    color: #8C7C83;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+}
+
+.nav-breadcrumbs a {
+    text-decoration: none;
+    color: inherit;
+    transition: color 0.2s;
+}
+
+.nav-breadcrumbs a:hover {
+    color: #4A192C;
+}
+
+.nav-breadcrumbs span {
+    color: #D3C9CB;
+}
