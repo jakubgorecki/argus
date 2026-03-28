@@ -367,43 +367,60 @@ else:
 
     st.markdown("""
 <style>
-[data-testid="stHorizontalBlock"]:has(.case-row-container) {
-    gap: 0 !important;
+/* Target only the horizontal blocks that contain our specific row marker */
+[data-testid="stHorizontalBlock"]:has(.row-marker) {
+    gap: 0 !important; 
+    align-items: flex-start !important;
 }
-[data-testid="stHorizontalBlock"]:has(.case-row-container) > [data-testid="stColumn"] {
-    padding: 0 !important;
+
+/* Remove padding from the column containing the button */
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:nth-child(2) {
+    padding-left: 0 !important;
 }
-.case-row-container .stButton button {
-    min-height: 62px !important;
+
+/* Style the Streamlit button to match the left-side div perfectly */
+[data-testid="stHorizontalBlock"]:has(.row-marker) button {
+    height: 84px !important; /* Force exact height to match row */
+    min-height: 84px !important;
     border: 1px solid #EFEBEB !important;
     border-left: none !important;
     border-radius: 0 8px 8px 0 !important;
     background: #fff !important;
     color: var(--argus-text-muted) !important;
-    font-size: 18px !important;
-    font-weight: 600 !important;
     transition: all 0.2s ease !important;
     margin: 0 !important;
     padding: 0 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
-.case-row-container .stButton button:hover {
+
+[data-testid="stHorizontalBlock"]:has(.row-marker) button:hover {
     background: #f3f3f5 !important;
     color: #4A192C !important;
+    border: 1px solid #EFEBEB !important;
+    border-left: none !important;
 }
-.case-row-container .stButton {
-    margin: 0 !important;
+
+/* Target the Material icon inside the button */
+[data-testid="stHorizontalBlock"]:has(.row-marker) button span.material-symbols-rounded {
+    font-size: 24px !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-    st.markdown("""
-<div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
-    <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
-    <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
-    <div style="width: 14%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
-    <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
-</div>
-""", unsafe_allow_html=True)
+    # Wrap the header in columns to align with the rows below
+    h_col1, h_col2 = st.columns()
+    
+    with h_col1:
+        st.markdown("""
+        <div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
+            <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
+            <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
+            <div style="width: 14%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Name Similarity</div>
+            <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
@@ -414,10 +431,11 @@ else:
             label = STATUS_LABELS.get(row["STATUS"], row["STATUS"])
             rid = row['ID']
 
-            col_row, col_btn = st.columns([9, 1])
+            col_row, col_btn = st.columns()
             with col_row:
+                # Changed min-height:60px to a fixed height:84px and added box-sizing
                 st.markdown(f"""
-<div style="border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif; min-height:60px;">
+<div style="height:84px; box-sizing:border-box; border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif;">
 <div style="width:42%; display:flex; flex-direction:column;">
 <div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
 <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}" style="width:20px; height:20px;" />
@@ -439,8 +457,10 @@ else:
 </div>
 </div>""", unsafe_allow_html=True)
             with col_btn:
-                st.markdown("<div class='case-row-container'>", unsafe_allow_html=True)
-                if st.button("›", key=f"c_{rid}", use_container_width=True):
+                # Inject the hidden marker so CSS can target this specific row block
+                st.markdown("<span class='row-marker' style='display:none;'></span>", unsafe_allow_html=True)
+                
+                # Use Streamlit's native icon support instead of standard text for the arrow
+                if st.button("", icon=":material/chevron_right:", key=f"c_{rid}", use_container_width=True):
                     st.query_params["selected_case"] = rid
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
