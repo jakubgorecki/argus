@@ -1,19 +1,12 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
-import os
+from snowflake.snowpark.context import get_active_session
 
-# Database connection helper
-def get_db_connection():
-    db_path = os.path.join(os.path.dirname(__file__), "..", "argus.db")
-    return sqlite3.connect(db_path)
+session = get_active_session()
 
-# Removed cache to ensure live database syncs
 def load_cases_data():
-    conn = get_db_connection()
-    cases = pd.read_sql("SELECT * FROM cases", conn)
-    metrics = pd.read_sql("SELECT * FROM case_metrics", conn)
-    conn.close()
+    cases = session.sql("SELECT * FROM AML_SCREENING.ARGUS.CASES").to_pandas()
+    metrics = session.sql("SELECT * FROM AML_SCREENING.ARGUS.CASE_METRICS").to_pandas()
     return cases, metrics
 
 cases_df, metrics_df = load_cases_data()
@@ -21,10 +14,7 @@ cases_df, metrics_df = load_cases_data()
 if 'selected_case' in st.session_state and st.session_state['selected_case'] is not None:
     case_id = st.session_state['selected_case']
         
-    # Fetch Dynamic Detail Data
-    conn = get_db_connection()
-    case_data = pd.read_sql(f"SELECT * FROM cases WHERE ID = '{case_id}'", conn)
-    conn.close()
+    case_data = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.CASES WHERE ID = '{case_id}'").to_pandas()
 
     if case_data.empty:
         st.error("Case data not found.")
@@ -32,10 +22,8 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         
     row = case_data.iloc[0]
 
-    # Header Section
     st.markdown("<div style='margin-top: -32px;'></div>", unsafe_allow_html=True)
     
-    # Status and Name
     flag_color = "#ffdad6" if row["STATUS"] != "AUTO-CLEARED" else "#b3ebff"
     text_color = "#93000a" if row["STATUS"] != "AUTO-CLEARED" else "#004e5f"
     flag_label = "HIGH RISK HIT" if row["RISK_SCORE"] > 70 else ("REVIEW TRIGGERED" if row["RISK_SCORE"] > 40 else "CLEARED")
@@ -50,7 +38,6 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         <h1 style='margin:0; padding:0; color: #2c0210; font-size: 48px; line-height: 1.1;'>{row['ENTITY_NAME']}</h1>
     """, unsafe_allow_html=True)
 
-    # Details & Actions Row
     det_col1, det_col2 = st.columns([7, 3], vertical_alignment="center")
     
     with det_col1:
@@ -63,7 +50,6 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         """, unsafe_allow_html=True)
 
     with det_col2:
-        # Use a combination of st.button and custom CSS for a reliable print trigger
         st.markdown("""
         <style>
         div[data-testid="stHorizontalBlock"] .stButton > button {
@@ -95,10 +81,8 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         with btn_col2:
             if st.button("Export PDF", icon=":material/print:", use_container_width=True):
                 import streamlit.components.v1 as components
-                # Triggers the browser print dialog natively in the parent window
                 components.html("<script>window.parent.print()</script>", height=0)
 
-    # Client & Product Row (re-positioned for layout flow)
     st.markdown(f"""
         <div style='display:flex; align-items:center; gap: 0px; margin-top: 16px; margin-bottom: 24px; padding-top: 16px; border-top: 1px solid #EFEBEB;'>
             <div style='display:flex; align-items:center; gap:8px; padding-right: 20px; border-right: 1px solid #EFEBEB;'>
@@ -114,21 +98,15 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
         </div>
     """, unsafe_allow_html=True)
 
-    # Layout: Workload on Left, AI Insight on Right
     col_left, col_right = st.columns([8, 3])
 
     with col_left:
-        # 1. Watchlist Hits Table (with overflow fix)
         with st.container(border=True):
-            conn_wl = get_db_connection()
-            wl_hits_df = pd.read_sql(f"SELECT * FROM watchlist_hits WHERE CASE_ID = '{case_id}'", conn_wl)
-            conn_wl.close()
+            wl_hits_df = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.WATCHLIST_HITS WHERE CASE_ID = '{case_id}'").to_pandas()
 
             st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Watchlist Hit Details</h4><span style='font-size:10px; font-weight:600; color:#524346; letter-spacing: 0.5px; text-transform: uppercase;'>Source: World-Check Global</span></div>", unsafe_allow_html=True)
             
             if not wl_hits_df.empty:
-                # Removed internal border and adjusted margin to integrate better with the parent card
-                # Enhanced table aesthetics for seamless card integration
                 table_html = """<div style="overflow-x: auto; width: 100%; margin-bottom: 24px;">
 <table style="width: 100%; text-align: left; border-collapse: collapse; font-family: 'Inter', sans-serif; min-width: 600px; border: none;">
 <thead style="border-bottom: 2px solid #EFEBEB;">
@@ -144,7 +122,6 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                     match_stat = h_row['MATCH_STATUS']
                     bg_col = "#b3ebff" if match_stat == "MATCH" else ("#cfc4c6" if match_stat == "MISMATCH" else "#e8dddf")
                     txt_col = "#001f27" if match_stat == "MATCH" else "#4c4547"
-                    # Lighter borders for a cleaner look
                     bb_style = f'border-bottom: 1px solid var(--argus-border);' if idx < len(wl_hits_df) - 1 else ''
                     table_html += f"""
 <tr style="{bb_style}">
@@ -160,15 +137,11 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             else:
                 st.markdown("<div style='padding:24px; background-color:#f3f3f5; border-radius:12px; font-size:14px; color:#524346; margin: 8px 0 24px 0;'>No watchlist attributes flagged for this entity.</div>", unsafe_allow_html=True)
 
-        # 2. Evidence & Files Card
         with st.container(border=True):
-            conn_ev = get_db_connection()
-            ev_df = pd.read_sql(f"SELECT * FROM evidence_files WHERE CASE_ID = '{case_id}'", conn_ev)
-            conn_ev.close()
+            ev_df = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.EVIDENCE_FILES WHERE CASE_ID = '{case_id}'").to_pandas()
             
             st.markdown(f"<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Evidence & Files</h4><span style='background-color:#e8dddf; color:#696163; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;'>{len(ev_df)} FILES</span></div>", unsafe_allow_html=True)
             
-            # Show files in a horizontal flex grid
             grid_html = "<div style='display:grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap:12px;'>"
             for idx, e_row in ev_df.iterrows():
                 fname = e_row['FILE_NAME']
@@ -188,13 +161,10 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
             st.file_uploader("Drop additional evidence", accept_multiple_files=True, label_visibility="collapsed")
 
-        # 3. Decision History Card
         with st.container(border=True):
             st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Decision History</h4><span style='font-size: 13px; font-weight: 600; color: #471524; cursor: pointer;'>View Audit Log</span></div>", unsafe_allow_html=True)
             
-            conn_hist = get_db_connection()
-            history_df = pd.read_sql(f"SELECT * FROM decision_history WHERE CASE_ID = '{case_id}' ORDER BY SORT_ORDER DESC", conn_hist)
-            conn_hist.close()
+            history_df = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.DECISION_HISTORY WHERE CASE_ID = '{case_id}' ORDER BY SORT_ORDER DESC").to_pandas()
             
             timeline_parts = ["<div style='margin-left: 20px; position: relative; padding: 24px 0 24px 0; font-family: \"Inter\", sans-serif;'>"]
             for idx, h_row in history_df.iterrows():
@@ -208,7 +178,6 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                 if idx < len(history_df) - 1:
                     line_segment = f"<div style='position: absolute; left: -1px; top: 16px; bottom: -24px; border-left: 2px solid #e2e2e4;'></div>"
                 
-                # Single-line parts to avoid markdown interpretation issues
                 part_html = f"<div style='position: relative; padding-left: 24px; margin-bottom: {margin_bottom};'>{line_segment}"
                 part_html += f"<div style='position: absolute; left: -9px; top: 0px; width: 16px; height: 16px; border-radius: 50%; background-color: {dot_color}; box-shadow: 0 0 0 4px #fff;'></div>"
                 part_html += f"<div style='display: flex; flex-direction: column;'>"
@@ -222,7 +191,6 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
             full_html = "".join(timeline_parts)
             st.markdown(full_html, unsafe_allow_html=True)
 
-        # 4. Review Decision Form (Now inside col_left to match width)
         with st.form(key=f"review_form_{case_id}", clear_on_submit=True, border=True):
             st.markdown("<h4 style='margin-bottom:16px;'>Record Review Decision</h4>", unsafe_allow_html=True)
             new_note = st.text_area("Rationale", label_visibility="collapsed", placeholder="Provide rationale for your decision...")
@@ -243,29 +211,25 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
                 submit_review = st.form_submit_button("Submit Review", type="primary", use_container_width=True)
                 
             if submit_review:
-                conn_n = get_db_connection()
                 from datetime import datetime
                 now_str = datetime.now().strftime("Today, %I:%M %p")
                 
                 desc_str = new_note if new_note.strip() else "No additional rationale provided."
                 title_str = f"Analyst Review: {decision}"
                 
-                cur_hist = pd.read_sql(f"SELECT MAX(SORT_ORDER) as m FROM decision_history WHERE CASE_ID='{case_id}'", conn_n)
-                max_order = int(cur_hist['m'].iloc[0]) if not cur_hist.empty and pd.notna(cur_hist['m'].iloc[0]) else 0
+                cur_hist = session.sql(f"SELECT MAX(SORT_ORDER) as M FROM AML_SCREENING.ARGUS.DECISION_HISTORY WHERE CASE_ID='{case_id}'").to_pandas()
+                max_order = int(cur_hist['M'].iloc[0]) if not cur_hist.empty and pd.notna(cur_hist['M'].iloc[0]) else 0
                 
-                conn_n.execute("INSERT INTO decision_history (CASE_ID, SORT_ORDER, TIMESTAMP, TITLE, DESCRIPTION) VALUES (?, ?, ?, ?, ?)",
-                               (case_id, max_order + 1, now_str, title_str, f"Analyst {st.session_state.get('user_name', 'Julian Thome')} ({decision}): " + desc_str))
+                full_desc = f"Analyst Julian Thome ({decision}): " + desc_str
+                session.sql(f"INSERT INTO AML_SCREENING.ARGUS.DECISION_HISTORY (CASE_ID, SORT_ORDER, TIMESTAMP, TITLE, DESCRIPTION) VALUES ('{case_id}', {max_order + 1}, '{now_str}', '{title_str}', '{full_desc}')").collect()
                 
                 new_stat = "AUTO-CLEARED" if decision == "Cleared" else ("Investigation" if decision == "Escalate" else "Blocked")
-                conn_n.execute("UPDATE cases SET STATUS = ? WHERE ID = ?", (new_stat, case_id))
+                session.sql(f"UPDATE AML_SCREENING.ARGUS.CASES SET STATUS = '{new_stat}' WHERE ID = '{case_id}'").collect()
                 
-                conn_n.commit()
-                conn_n.close()
                 st.rerun()
 
 
     with col_right:
-        # AI Insight (Only thing on the right)
         with st.container(border=True):
             st.markdown(f"""
                 <div style='display:flex; flex-direction:column; gap:16px;'>
@@ -284,35 +248,32 @@ if 'selected_case' in st.session_state and st.session_state['selected_case'] is 
 else:
     st.title("Case Management")
 
-    # Top Metrics Row
     col1, col2, col3, col4 = st.columns(4)
 
     with col1:
-        val = metrics_df[metrics_df['metric'] == 'Active Cases']['value'].values[0]
-        delta = metrics_df[metrics_df['metric'] == 'Active Cases']['delta'].values[0]
+        val = metrics_df[metrics_df['METRIC'] == 'Active Cases']['VALUE'].values[0]
+        delta = metrics_df[metrics_df['METRIC'] == 'Active Cases']['DELTA'].values[0]
         st.metric("Active Cases", val, delta=delta, delta_color="normal")
 
     with col2:
-        val = metrics_df[metrics_df['metric'] == 'Pending Review (High Risk)']['value'].values[0]
-        delta = metrics_df[metrics_df['metric'] == 'Pending Review (High Risk)']['delta'].values[0]
+        val = metrics_df[metrics_df['METRIC'] == 'Pending Review (High Risk)']['VALUE'].values[0]
+        delta = metrics_df[metrics_df['METRIC'] == 'Pending Review (High Risk)']['DELTA'].values[0]
         st.metric("Pending Review (High Risk)", val, delta=delta, delta_color="inverse")
 
     with col3:
-        val = metrics_df[metrics_df['metric'] == 'AI Auto-Cleared (24H)']['value'].values[0]
-        delta = metrics_df[metrics_df['metric'] == 'AI Auto-Cleared (24H)']['delta'].values[0]
+        val = metrics_df[metrics_df['METRIC'] == 'AI Auto-Cleared (24H)']['VALUE'].values[0]
+        delta = metrics_df[metrics_df['METRIC'] == 'AI Auto-Cleared (24H)']['DELTA'].values[0]
         st.metric("AI Auto-Cleared (24H)", val, delta=delta, delta_color="normal")
 
     with col4:
-        val = metrics_df[metrics_df['metric'] == 'Avg. Resolution Time']['value'].values[0]
-        delta = metrics_df[metrics_df['metric'] == 'Avg. Resolution Time']['delta'].values[0]
+        val = metrics_df[metrics_df['METRIC'] == 'Avg. Resolution Time']['VALUE'].values[0]
+        delta = metrics_df[metrics_df['METRIC'] == 'Avg. Resolution Time']['DELTA'].values[0]
         st.metric("Avg. Resolution Time", f"{val} hrs", delta=delta if delta else None)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 1. Filtering Logic
     f_col1, f_col2, f_col3, f_col_empty, f_col4 = st.columns([2, 2, 2, 5, 3])
     with f_col1:
-        # Default to "Pending Review" as requested by user
         status_filter = st.selectbox("Filters", ["All Statuses", "Pending Review", "Investigation", "AUTO-CLEARED"], index=1, label_visibility="collapsed")
     with f_col2:
         risk_filter = st.selectbox("Risk", ["Risk: All Levels", "High", "Medium", "Low"], label_visibility="collapsed")
@@ -321,10 +282,8 @@ else:
     with f_col4:
         st.button("+ New Case", type="primary", use_container_width=True)
 
-    # Apply Filters to cases_df
     filtered_df = cases_df.copy()
     
-    # Sort by Risk Score descending by default (Importance & Urgency)
     filtered_df = filtered_df.sort_values(by="RISK_SCORE", ascending=False)
     if status_filter != "All Statuses":
         filtered_df = filtered_df[filtered_df['STATUS'] == status_filter]
@@ -339,7 +298,6 @@ else:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 2. Unified Table Header
     st.markdown("""
 <div style="display: flex; align-items: center; justify-content: space-between; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
     <div style="width: 40%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
@@ -349,7 +307,6 @@ else:
 </div>
 """, unsafe_allow_html=True)
 
-    # 3. Compact Case Rows
     st.markdown("""
 <style>
 .case-row {

@@ -1,26 +1,15 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
-import os
+from snowflake.snowpark.context import get_active_session
 
-# Database connection helper
-def get_db_connection():
-    db_path = os.path.join(os.path.dirname(__file__), "..", "argus.db")
-    return sqlite3.connect(db_path)
+session = get_active_session()
 
-# Removed cache to ensure live DB reads
 def fetch_dash_cases():
-    conn = get_db_connection()
-    df = pd.read_sql("SELECT * FROM cases", conn)
-    conn.close()
-    return df
+    return session.sql("SELECT * FROM AML_SCREENING.ARGUS.CASES").to_pandas()
 
 @st.cache_data
 def get_chart_data():
-    conn = get_db_connection()
-    df = pd.read_sql("SELECT * FROM ai_metrics", conn)
-    conn.close()
-    return df
+    return get_active_session().sql("SELECT * FROM AML_SCREENING.ARGUS.AI_METRICS").to_pandas()
 
 st.title("Surveillance Overview")
 st.caption("Real-time risk orchestration and case intelligence for Enfuce financial networks.")
@@ -30,7 +19,6 @@ st.markdown("<br>", unsafe_allow_html=True)
 col_charts, col_metrics = st.columns([1.5, 1])
 
 with col_charts:
-    # Use a fixed height for the left container to match the right card
     with st.container(border=True):
         st.markdown("""
             <div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;'>
@@ -41,14 +29,10 @@ with col_charts:
         st.caption("EFFICIENCY METRICS • LAST 24H")
         
         df_chart = get_chart_data()
-        # Adjusted height to fit within a 440px container (approx 340px for chart)
-        st.bar_chart(df_chart, x="Day", y="Noise_Removed", color="#9B8B91", height=335)
+        st.bar_chart(df_chart, x="DAY", y="NOISE_REMOVED", color="#9B8B91", height=335)
 
 with col_metrics:
-    # Custom "Pending Review" Card matching user screenshot
-    conn = get_db_connection()
-    employees_df = pd.read_sql("SELECT * FROM employees LIMIT 3", conn)
-    conn.close()
+    employees_df = session.sql("SELECT * FROM AML_SCREENING.ARGUS.EMPLOYEES LIMIT 3").to_pandas()
     
     avatar_html = ""
     for idx, e_row in employees_df.iterrows():
@@ -56,7 +40,6 @@ with col_metrics:
         avatar_html += f"<img src='{e_row['AVATAR_URL']}' style='width:36px; height:36px; border-radius:50%; border:2px solid #4A192C; margin-left:{ml}; object-fit:cover;' />"
     avatar_html += "<div style='background:#2D1A22; color:white; width:36px; height:36px; border-radius:50%; display:flex; justify-content:center; align-items:center; font-size:11px; margin-left:-12px; border:2px solid #4A192C; font-weight:bold;'>+8</div>"
 
-    # Set height to 440px to match the container-wrapped chart on the left
     st.markdown(f"""
         <div style='background-color: #4A192C; padding: 24px 36px; border-radius: 12px; color: white; font-family: "Inter", sans-serif; height: 440px; display: flex; flex-direction: column; justify-content: space-between;'>
             <div>
@@ -91,7 +74,7 @@ with st.container(border=True):
         st.markdown("</div>", unsafe_allow_html=True)
         
     st.markdown("""<style>.dash-card { border:1px solid #EFEBEB; border-radius:8px; padding:16px 24px; background-color:#ffffff; transition:box-shadow 0.2s ease, background-color 0.2s ease; margin-bottom:12px; display:block; text-decoration:none !important; color:inherit !important; } .dash-card:hover { background-color:#fafafa; box-shadow:0 4px 12px rgba(0,0,0,0.05); }</style>""", unsafe_allow_html=True)
-    df = fetch_dash_cases().head(5) # Limit Dashboard to top 5 cases
+    df = fetch_dash_cases().head(5)
     for idx, row in df.iterrows():
         color = "#E53E3E" if row['STATUS'] == "Pending Review" else ("#D69E2E" if "Investigation" in row['STATUS'] else "#38A169")
         card_html = f"""<a href="cases?selected_case={row['ID']}" target="_self" class="dash-card">

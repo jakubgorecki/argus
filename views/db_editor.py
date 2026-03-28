@@ -1,31 +1,24 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
-import os
+from snowflake.snowpark.context import get_active_session
 
-def get_db_connection():
-    db_path = os.path.join(os.path.dirname(__file__), "..", "argus.db")
-    return sqlite3.connect(db_path)
+session = get_active_session()
 
 st.title("Database Browser & Editor")
 st.caption("Live access to Argus Compliance SQL tables for validation and debugging.")
 
-conn = get_db_connection()
-cursor = conn.cursor()
-cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-tables = [t[0] for t in cursor.fetchall()]
+tables_df = session.sql("SHOW TABLES IN AML_SCREENING.ARGUS").to_pandas()
+tables = tables_df['name'].tolist() if not tables_df.empty else []
 
 if not tables:
     st.warning("No tables found in the database.")
 else:
     selected_table = st.selectbox("Select Table to View/Edit", tables)
     
-    # Load data
-    df = pd.read_sql(f"SELECT * FROM {selected_table}", conn)
+    df = session.sql(f"SELECT * FROM AML_SCREENING.ARGUS.{selected_table}").to_pandas()
     
     st.markdown(f"### Table: `{selected_table}`")
     
-    # Editable dataframe
     edited_df = st.data_editor(df, num_rows="dynamic", use_container_width=True)
     
     col1, col2 = st.columns([1, 4])
@@ -34,11 +27,10 @@ else:
     
     if save_btn:
         try:
-            # Overwrite the table with edited data
-            edited_df.to_sql(selected_table, conn, if_exists="replace", index=False)
+            session.sql(f"TRUNCATE TABLE AML_SCREENING.ARGUS.{selected_table}").collect()
+            snowpark_df = session.create_dataframe(edited_df)
+            snowpark_df.write.mode("append").save_as_table(f"AML_SCREENING.ARGUS.{selected_table}")
             st.success(f"Changes saved to `{selected_table}` successfully!")
             st.rerun()
         except Exception as e:
             st.error(f"Error saving changes: {e}")
-
-conn.close()
