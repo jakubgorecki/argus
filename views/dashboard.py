@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import altair as alt
 from snowflake.snowpark.context import get_active_session
 
 session = get_active_session()
@@ -68,7 +68,11 @@ with col_charts:
         st.caption("AUTO-DISMISSED SCREENINGS PER DAY")
         
         df_chart = get_chart_data()
-        st.bar_chart(df_chart, x="DAY", y="NOISE_REMOVED", color="#9B8B91", height=335)
+        chart = alt.Chart(df_chart).mark_bar(color='#9B8B91', cornerRadiusTopLeft=3, cornerRadiusTopRight=3).encode(
+            x=alt.X('DAY:N', title='Date', axis=alt.Axis(labelAngle=-45)),
+            y=alt.Y('NOISE_REMOVED:Q', title='Number of cases')
+        ).properties(height=310)
+        st.altair_chart(chart, use_container_width=True)
 
 with col_metrics:
     pending_count = session.sql("SELECT COUNT(*) AS C FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS WHERE DISPOSITION IN ('PENDING_HUMAN_REVIEW','CRITICAL_MATCH')").to_pandas()['C'].iloc[0]
@@ -141,7 +145,7 @@ with st.container(border=True):
 <div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-block;">{label}</span>
+<span style="background-color: {color}; color: white; padding: 6px 14px; border-radius: 4px; font-size: 12px; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">{label}</span>
 </div>
 </div>
 </a>"""

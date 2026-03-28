@@ -366,7 +366,7 @@ else:
 <div style="font-weight: 700; font-size: 14px; color: var(--argus-text-dark);">{row['AI_CONFIDENCE']}</div>
 </div>
 <div style="width: 15%; text-align: right;">
-<span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block;">{label}</span>
+<span style="background-color: {color}; color: {text_color}; padding: 6px 14px; border-radius: 4px; font-size: 11px; font-weight: 700; display: inline-block; min-width: 120px; text-align: center;">{label}</span>
 </div>
 </div>
 </a>"""
