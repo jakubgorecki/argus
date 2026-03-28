@@ -347,7 +347,8 @@ CASE_QUERY = """
         r.CANDIDATE_COUNT,
         r.SCREENED_AT,
         COALESCE(i.GENDER, 'N/A') AS GENDER,
-        COALESCE(i.SOURCE_SYSTEM, 'N/A') AS SOURCE_SYSTEM
+        COALESCE(i.SOURCE_SYSTEM, 'N/A') AS SOURCE_SYSTEM,
+        COALESCE(i.CARD_REQUESTED, 'N/A') AS CARD_REQUESTED
     FROM AML_SCREENING.PIPELINE.SCREENING_RESULTS r
     LEFT JOIN AML_SCREENING.PIPELINE.INCOMING_SCREENINGS i
         ON r.SCREENING_REQUEST_ID = i.SCREENING_REQUEST_ID
@@ -423,9 +424,9 @@ if selected_case is not None:
                 <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row['SOURCE_SYSTEM']}</span>
             </div>
             <div style='display:flex; align-items:center; gap:8px; padding-left: 20px;'>
-                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>payment</span>
-                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>MATCHED LIST:</span>
-                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row.get('MATCHED_LIST_NAME', 'N/A') or 'N/A'}</span>
+                <span class='material-symbols-rounded' style='font-size:20px; color:#524346;'>credit_card</span>
+                <span style='font-size:11px; font-weight:700; color:#8C7C83; text-transform:uppercase; letter-spacing:0.5px;'>CARD REQUESTED:</span>
+                <span style='font-size:14px; font-weight:600; color:#2c0210;'>{row.get('CARD_REQUESTED', 'N/A') or 'N/A'}</span>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -434,7 +435,13 @@ if selected_case is not None:
 
     with col_left:
         with st.container(border=True):
-            st.markdown("<div style='margin-bottom: 24px;'><h4 style='margin:0;'>Match Comparison</h4></div>", unsafe_allow_html=True)
+            matched_list_label = row.get('MATCHED_LIST_NAME', 'N/A') or 'N/A'
+            matched_list_abbr = row.get('MATCHED_LIST_ABBREVIATION', '') or ''
+            list_display = matched_list_abbr if matched_list_abbr else matched_list_label
+            st.markdown(f"""<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'>
+<h4 style='margin:0;'>Match Comparison</h4>
+<span style='font-size:10px; font-weight:700; color:#524346; letter-spacing:0.5px; text-transform:uppercase; background:#F8F5F5; padding:6px 14px; border-radius:100px; border:1px solid #EFEBEB;'>{list_display}</span>
+</div>""", unsafe_allow_html=True)
 
             comparison_data = [
                 ("Full Name", row['ENTITY_NAME'], row.get('MATCHED_ENTITY_NAME', 'N/A') or 'N/A',
@@ -476,36 +483,6 @@ if selected_case is not None:
 </table>
 </div>"""
             st.markdown(table_html, unsafe_allow_html=True)
-
-        with st.container(border=True):
-            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Score Breakdown</h4></div>", unsafe_allow_html=True)
-
-            scores = [
-                ("Name Similarity", row.get('NAME_SIMILARITY_SCORE', 0) or 0),
-                ("DOB", row.get('DOB_SCORE', 0) or 0),
-                ("Country", row.get('COUNTRY_SCORE', 0) or 0),
-                ("Place of Birth", row.get('POB_SCORE', 0) or 0),
-                ("Composite", row.get('COMPOSITE_SCORE', 0) or 0),
-            ]
-            score_html = "<div style='display:flex; flex-direction:column; gap:12px; padding-bottom:8px;'>"
-            for s_name, s_val in scores:
-                pct = round(s_val * 100, 1)
-                bar_color = "#E53E3E" if pct >= 85 else ("#f57c00" if pct >= 50 else "#38A169")
-                score_html += f"""
-                <div>
-                    <div style='display:flex; justify-content:space-between; margin-bottom:4px;'>
-                        <span style='font-size:13px; font-weight:600; color:var(--argus-text-dark);'>{s_name}</span>
-                        <span style='font-size:13px; font-weight:700; color:var(--argus-text-dark);'>{pct}%</span>
-                    </div>
-                    <div style='width:100%; height:8px; background:var(--argus-accent-light); border-radius:4px; overflow:hidden;'>
-                        <div style='width:{pct}%; height:100%; background:{bar_color}; border-radius:4px;'></div>
-                    </div>
-                </div>"""
-            score_html += "</div>"
-            st.markdown(score_html, unsafe_allow_html=True)
-
-            if row.get('LOGICAL_EXCLUSION'):
-                st.warning(f"Logical Exclusion: {row.get('EXCLUSION_REASON', 'N/A')}")
 
         with st.container(border=True):
             st.markdown("<h4 style='margin:0 0 16px 0;'>Evidence & Files</h4>", unsafe_allow_html=True)
@@ -556,6 +533,11 @@ if selected_case is not None:
 
                 st.rerun()
 
+        with st.container(border=True):
+            st.markdown("<h4 style='margin:0 0 16px 0;'>Activity Log</h4>", unsafe_allow_html=True)
+            audit_events = fetch_case_audit_trail(case_id, row.get('SCREENING_REQUEST_ID', ''), row)
+            render_audit_trail(audit_events)
+
     with col_right:
         ai_val_display = str(row.get('AI_DECISION') or '').strip()
         ai_reasoning_display = str(row.get('AI_REASONING') or '').strip()
@@ -579,6 +561,36 @@ if selected_case is not None:
                 """, unsafe_allow_html=True)
 
         with st.container(border=True):
+            st.markdown("<div style='display:flex; justify-content:space-between; align-items:center; margin-bottom: 24px;'><h4 style='margin:0;'>Score Breakdown</h4></div>", unsafe_allow_html=True)
+
+            scores = [
+                ("Name Similarity", row.get('NAME_SIMILARITY_SCORE', 0) or 0),
+                ("DOB", row.get('DOB_SCORE', 0) or 0),
+                ("Country", row.get('COUNTRY_SCORE', 0) or 0),
+                ("Place of Birth", row.get('POB_SCORE', 0) or 0),
+                ("Composite", row.get('COMPOSITE_SCORE', 0) or 0),
+            ]
+            score_html = "<div style='display:flex; flex-direction:column; gap:12px; padding-bottom:8px;'>"
+            for s_name, s_val in scores:
+                pct = round(s_val * 100, 1)
+                bar_color = "#E53E3E" if pct >= 85 else ("#f57c00" if pct >= 50 else "#38A169")
+                score_html += f"""
+                <div>
+                    <div style='display:flex; justify-content:space-between; margin-bottom:4px;'>
+                        <span style='font-size:13px; font-weight:600; color:var(--argus-text-dark);'>{s_name}</span>
+                        <span style='font-size:13px; font-weight:700; color:var(--argus-text-dark);'>{pct}%</span>
+                    </div>
+                    <div style='width:100%; height:8px; background:var(--argus-accent-light); border-radius:4px; overflow:hidden;'>
+                        <div style='width:{pct}%; height:100%; background:{bar_color}; border-radius:4px;'></div>
+                    </div>
+                </div>"""
+            score_html += "</div>"
+            st.markdown(score_html, unsafe_allow_html=True)
+
+            if row.get('LOGICAL_EXCLUSION'):
+                st.warning(f"Logical Exclusion: {row.get('EXCLUSION_REASON', 'N/A')}")
+
+        with st.container(border=True):
             st.markdown("<h4 style='margin:0 0 16px 0;'>Screening Metadata</h4>", unsafe_allow_html=True)
             meta_items = [
                 ("Gender", row.get('GENDER', 'N/A')),
@@ -593,11 +605,6 @@ if selected_case is not None:
                         <span style='font-size:12px; font-weight:700; color:var(--argus-text-dark);'>{m_val}</span>
                     </div>
                 """, unsafe_allow_html=True)
-
-        with st.container(border=True):
-            st.markdown("<h4 style='margin:0 0 16px 0;'>Activity Log</h4>", unsafe_allow_html=True)
-            audit_events = fetch_case_audit_trail(case_id, row.get('SCREENING_REQUEST_ID', ''), row)
-            render_audit_trail(audit_events)
 
 
 else:
