@@ -756,25 +756,28 @@ else:
 
     st.markdown("""
 <style>
-.case-row-btn > div > div > div > div > div > button {
+.row-block [data-testid="stHorizontalBlock"] {
+    gap: 0 !important;
+    align-items: stretch !important;
+    margin-bottom: -16px !important;
+}
+.row-block [data-testid="stColumn"] {
+    padding: 0 !important;
+}
+.row-block [data-testid="stColumn"]:last-child button {
     height: 84px !important;
-    width: 100% !important;
     border: 1px solid #EFEBEB !important;
-    border-radius: 8px !important;
+    border-left: none !important;
+    border-radius: 0 8px 8px 0 !important;
     background: #fff !important;
-    padding: 0 24px !important;
-    margin: 0 !important;
-    text-align: left !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    color: var(--argus-text-muted) !important;
+    transition: all 0.2s ease !important;
+    font-size: 20px !important;
+    font-weight: 300 !important;
 }
-.case-row-btn > div > div > div > div > div > button:hover {
-    border-color: #4A192C !important;
-    box-shadow: 0 2px 8px rgba(74, 25, 44, 0.08) !important;
-}
-.case-row-btn > div > div > div > div > div > button > div {
-    display: flex !important;
-    align-items: center !important;
-    width: 100% !important;
+.row-block [data-testid="stColumn"]:last-child button:hover {
+    background: #f3f3f5 !important;
+    color: #4A192C !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -798,7 +801,10 @@ else:
             rid = row['ID']
             flag_img = f"<img src=\"https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/{row['FLAG_URL']}\" style=\"width:20px; height:20px;\" />" if row['FLAG_URL'] else ""
 
-            btn_label = f"""<div style="display:flex; align-items:center; width:100%; font-family:'Inter',sans-serif;">
+            col_row, col_btn = st.columns([9, 1])
+            with col_row:
+                st.markdown(f"""
+<div style="height:84px; box-sizing:border-box; border:1px solid #EFEBEB; border-right:none; padding:16px 24px; background:#fff; border-radius:8px 0 0 8px; display:flex; align-items:center; font-family:'Inter',sans-serif;">
 <div style="width:42%; display:flex; flex-direction:column;">
 <div style="display:flex; align-items:center; gap:12px; margin-bottom:2px;">
 {flag_img}<span style="font-weight:600; font-size:15px; color:var(--argus-text-dark);">{row['ENTITY_NAME']}</span>
@@ -817,12 +823,8 @@ else:
 <div style="width:20%; text-align:center;">
 <span style="background:{color}; color:{txt_color}; padding:6px 14px; border-radius:4px; font-size:11px; font-weight:700; display:inline-block; min-width:120px; text-align:center;">{label}</span>
 </div>
-<div style="width:4%; text-align:right; color:var(--argus-text-muted); font-size:18px;">›</div>
-</div>"""
-
-            with st.container():
-                st.markdown("<div class='case-row-btn'>", unsafe_allow_html=True)
-                if st.button(btn_label, key=f"c_{rid}", use_container_width=True):
+</div>""", unsafe_allow_html=True)
+            with col_btn:
+                if st.button("›", key=f"c_{rid}", use_container_width=True):
                     st.query_params["selected_case"] = rid
                     st.rerun()
-                st.markdown("</div>", unsafe_allow_html=True)
