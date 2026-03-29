@@ -756,16 +756,25 @@ else:
 
     st.markdown("""
 <style>
-.row-block [data-testid="stHorizontalBlock"] {
+.row-block [data-testid="stHorizontalBlock"],
+[data-testid="stHorizontalBlock"]:has(.row-marker) {
     gap: 0 !important;
     align-items: stretch !important;
     margin-bottom: -16px !important;
 }
-.row-block [data-testid="stColumn"] {
+.row-block [data-testid="stColumn"],
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"] {
     padding: 0 !important;
 }
-.row-block [data-testid="stColumn"]:last-child button {
+.row-block [data-testid="stColumn"]:last-child button,
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child button {
     height: 84px !important;
+    min-height: 84px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
     border: 1px solid #EFEBEB !important;
     border-left: none !important;
     border-radius: 0 8px 8px 0 !important;
@@ -775,7 +784,8 @@ else:
     font-size: 20px !important;
     font-weight: 300 !important;
 }
-.row-block [data-testid="stColumn"]:last-child button:hover {
+.row-block [data-testid="stColumn"]:last-child button:hover,
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child button:hover {
     background: #f3f3f5 !important;
     color: #4A192C !important;
 }
@@ -825,6 +835,7 @@ else:
 </div>
 </div>""", unsafe_allow_html=True)
             with col_btn:
+                st.markdown("<span class='row-marker' style='display:none;'></span>", unsafe_allow_html=True)
                 if st.button("›", key=f"c_{rid}", use_container_width=True):
                     st.query_params["selected_case"] = rid
                     st.rerun()
