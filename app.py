@@ -23,12 +23,13 @@ integrations = st.Page("views/integrations.py", title="Integrations", icon=":mat
 reports = st.Page("views/reports.py", title="Reports", icon=":material/analytics:")
 db_editor = st.Page("views/db_editor.py", title="DB Admin", icon=":material/database:")
 debugger = st.Page("views/debugger.py", title="Debugger", icon=":material/bug_report:")
+documentation = st.Page("views/documentation.py", title="Documentation", icon=":material/menu_book:")
 
 st.logo("logo.svg", icon_image="icon.svg", size="large")
 
 pg = st.navigation({
     "Main": [dashboard, cases_list, integrations, reports],
-    "System": [db_editor, debugger]
+    "System": [db_editor, debugger, documentation]
 })
 
 with open("style.css") as f:
