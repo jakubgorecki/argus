@@ -120,6 +120,10 @@ def render_audit_trail(events):
             unsafe_allow_html=True
         )
 
+def _safe_latin(text):
+    from unidecode import unidecode
+    return unidecode(str(text))
+
 def generate_case_pdf(row, audit_events):
     pdf = FPDF()
     pdf.add_page()
@@ -137,10 +141,10 @@ def generate_case_pdf(row, audit_events):
 
     disp_label = STATUS_LABELS.get(row.get('STATUS', ''), row.get('STATUS', ''))
     pdf.set_font("Helvetica", "B", 14)
-    pdf.cell(pw, 8, str(row.get('ENTITY_NAME', 'N/A')), new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(pw, 8, _safe_latin(row.get('ENTITY_NAME', 'N/A')), new_x="LMARGIN", new_y="NEXT")
     pdf.set_font("Helvetica", "", 10)
     pdf.set_text_color(82, 67, 70)
-    pdf.cell(pw, 6, "Status: " + disp_label + "   |   Risk Score: " + str(row.get('RISK_SCORE', 'N/A')) + "%", new_x="LMARGIN", new_y="NEXT")
+    pdf.cell(pw, 6, _safe_latin("Status: " + disp_label + "   |   Risk Score: " + str(row.get('RISK_SCORE', 'N/A')) + "%"), new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
     fields = [
@@ -161,10 +165,10 @@ def generate_case_pdf(row, audit_events):
     for label, val in fields:
         pdf.set_font("Helvetica", "B", 9)
         pdf.set_text_color(140, 124, 131)
-        pdf.cell(50, 6, label)
+        pdf.cell(50, 6, _safe_latin(label))
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(26, 28, 29)
-        pdf.cell(pw - 50, 6, val, new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(pw - 50, 6, _safe_latin(val), new_x="LMARGIN", new_y="NEXT")
 
     pdf.ln(6)
 
@@ -202,9 +206,9 @@ def generate_case_pdf(row, audit_events):
         pdf.set_text_color(26, 28, 29)
         pdf.cell(col_w[0], 6, attr)
         pdf.set_text_color(82, 67, 70)
-        pdf.cell(col_w[1], 6, screened[:35])
+        pdf.cell(col_w[1], 6, _safe_latin(screened[:35]))
         pdf.set_text_color(26, 28, 29)
-        pdf.cell(col_w[2], 6, matched[:35])
+        pdf.cell(col_w[2], 6, _safe_latin(matched[:35]))
         if stat == "MATCH":
             pdf.set_text_color(0, 78, 95)
         else:
@@ -251,10 +255,10 @@ def generate_case_pdf(row, audit_events):
         pdf.ln(4)
         pdf.set_font("Helvetica", "B", 11)
         pdf.set_text_color(44, 2, 16)
-        pdf.cell(pw, 8, "AI Decision: " + ai_val, new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(pw, 8, _safe_latin("AI Decision: " + ai_val), new_x="LMARGIN", new_y="NEXT")
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(26, 28, 29)
-        pdf.multi_cell(pw, 5, ai_reasoning[:500])
+        pdf.multi_cell(pw, 5, _safe_latin(ai_reasoning[:500]))
 
     if audit_events:
         pdf.ln(4)
@@ -271,13 +275,13 @@ def generate_case_pdf(row, audit_events):
                 ts_str = str(ts)[:16]
             pdf.set_font("Helvetica", "B", 9)
             pdf.set_text_color(44, 2, 16)
-            pdf.cell(pw, 5, ev['title'], new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(pw, 5, _safe_latin(ev['title']), new_x="LMARGIN", new_y="NEXT")
             pdf.set_font("Helvetica", "", 8)
             pdf.set_text_color(82, 67, 70)
-            pdf.cell(pw, 4, ev['user'] + "  |  " + ts_str, new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(pw, 4, _safe_latin(ev['user'] + "  |  " + ts_str), new_x="LMARGIN", new_y="NEXT")
             if ev.get('detail'):
                 pdf.set_text_color(26, 28, 29)
-                pdf.multi_cell(pw, 4, str(ev['detail'])[:300])
+                pdf.multi_cell(pw, 4, _safe_latin(str(ev['detail'])[:300]))
             pdf.ln(2)
 
     pdf.ln(6)

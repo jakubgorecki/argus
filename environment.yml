@@ -2,7 +2,8 @@ name: sf_env
 channels:
   - snowflake
 dependencies:
-  - streamlit
+  - streamlit>=1.36
   - pandas
   - snowflake-snowpark-python
   - fpdf2
+  - unidecode
