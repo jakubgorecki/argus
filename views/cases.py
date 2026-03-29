@@ -708,7 +708,7 @@ else:
            OR r.SCREENED_AT >= DATEADD('day', -7, CURRENT_TIMESTAMP())
         ORDER BY r.COMPOSITE_SCORE DESC
     """).to_pandas()
-    cases_df['FLAG_URL'] = cases_df['COUNTRY'].apply(_country_flag_code) + '.png'
+    cases_df['FLAG_URL'] = cases_df['COUNTRY'].apply(lambda c: (fc + '.png') if (fc := _country_flag_code(c)) else '')
 
     st.title("Case Management")
 
