@@ -34,8 +34,7 @@ def render_topbar():
     if st.session_state.get("_search_navigate"):
         case_id = st.session_state.pop("_search_navigate")
         st.query_params["selected_case"] = case_id
-        st.query_params["page"] = "cases"
-        st.rerun()
+        st.switch_page("views/cases.py")
     
     col_search, col_spacer, col_profile = st.columns(
         [30, 40, 30], 
@@ -50,7 +49,7 @@ def render_topbar():
             icon=":material/search:",
             key="global_case_search",
         )
-        if search_val and search_val.strip() and search_val != st.session_state.get("_last_search"):
+        if search_val and search_val.strip():
             st.session_state["_last_search"] = search_val
             result_id, error = _do_search(search_val)
             if error:
