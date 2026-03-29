@@ -755,7 +755,6 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("""
-<style>
 .row-block [data-testid="stHorizontalBlock"],
 [data-testid="stHorizontalBlock"]:has(.row-marker) {
     gap: 0 !important;
@@ -765,6 +764,18 @@ else:
 .row-block [data-testid="stColumn"],
 [data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"] {
     padding: 0 !important;
+}
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child [data-testid="stMarkdownContainer"]:has(.row-marker) {
+    display: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 0 !important;
+}
+.row-block [data-testid="stColumn"]:last-child .stButton,
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child .stButton {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 84px !important;
 }
 .row-block [data-testid="stColumn"]:last-child button,
 [data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child button {
@@ -792,7 +803,9 @@ else:
 </style>
 """, unsafe_allow_html=True)
 
-    st.markdown("""
+    h_col1, h_col2 = st.columns([9, 1])
+    with h_col1:
+        st.markdown("""
 <div style="display: flex; align-items: center; padding: 0 24px 12px 24px; border-bottom: 2px solid #EFEBEB; margin-bottom: 8px; font-family: 'Inter', sans-serif;">
     <div style="width: 42%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Entity Name</div>
     <div style="width: 24%; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Risk Score</div>
