@@ -756,29 +756,47 @@ else:
 
     st.markdown("""
 <style>
-.row-block [data-testid="stHorizontalBlock"],
+/* Target the horizontal block holding the row */
 [data-testid="stHorizontalBlock"]:has(.row-marker) {
     gap: 0 !important;
-    align-items: stretch !important;
-    margin-bottom: -16px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: -12px !important;
 }
-.row-block [data-testid="stColumn"],
+
+/* Base column resets to strip gaps */
 [data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"] {
     padding: 0 !important;
+    margin: 0 !important;
 }
-[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child [data-testid="stMarkdownContainer"]:has(.row-marker) {
-    display: none !important;
+
+/* Force strip margins from inner Streamlit containers to be perfectly flush */
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"] div[data-testid="stVerticalBlock"],
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"] div.stMarkdownContainer,
+[data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"] div.stMarkdownContainer > p {
     margin: 0 !important;
     padding: 0 !important;
-    height: 0 !important;
+    gap: 0 !important;
 }
-.row-block [data-testid="stColumn"]:last-child .stButton,
+
+/* Hide the marker completely to avoid ghost block space */
+[data-testid="stHorizontalBlock"]:has(.row-marker) [data-testid="stMarkdownContainer"]:has(.row-marker) {
+    display: none !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* StButton explicit wrapper reset */
 [data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child .stButton {
     margin: 0 !important;
     padding: 0 !important;
     height: 84px !important;
+    display: flex;
+    align-items: center;
 }
-.row-block [data-testid="stColumn"]:last-child button,
+
+/* The actual clickable target */
 [data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child button {
     height: 84px !important;
     min-height: 84px !important;
@@ -795,8 +813,9 @@ else:
     transition: all 0.2s ease !important;
     font-size: 20px !important;
     font-weight: 300 !important;
+    box-sizing: border-box !important;
 }
-.row-block [data-testid="stColumn"]:last-child button:hover,
+
 [data-testid="stHorizontalBlock"]:has(.row-marker) > [data-testid="stColumn"]:last-child button:hover {
     background: #f3f3f5 !important;
     color: #4A192C !important;
@@ -814,6 +833,8 @@ else:
     <div style="width: 20%; text-align: center; font-size: 11px; font-weight: 700; color: #8C7C83; text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
 </div>
 """, unsafe_allow_html=True)
+    with h_col2:
+        st.markdown("<span class='row-marker' style='display:none;'></span>", unsafe_allow_html=True)
 
     if filtered_df.empty:
         st.info("No cases match the selected filters.")
