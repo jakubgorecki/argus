@@ -763,9 +763,23 @@ else:
 .row-block [data-testid="stColumn"] {
     padding: 0 !important;
 }
+.row-block [data-testid="stColumn"]:last-child {
+    display: flex !important;
+    align-items: stretch !important;
+}
+.row-block [data-testid="stColumn"]:last-child > div {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+.row-block [data-testid="stColumn"]:last-child > div > div {
+    flex: 1 !important;
+    display: flex !important;
+}
 .row-block [data-testid="stColumn"]:last-child button {
-    height: 84px !important;
+    height: 100% !important;
     min-height: 84px !important;
+    width: 100% !important;
     border: 1px solid #EFEBEB !important;
     border-left: none !important;
     border-radius: 0 8px 8px 0 !important;
@@ -774,6 +788,8 @@ else:
     transition: all 0.2s ease !important;
     margin: 0 !important;
     padding: 0 !important;
+    font-size: 20px !important;
+    font-weight: 300 !important;
 }
 .row-block [data-testid="stColumn"]:last-child button:hover {
     background: #f3f3f5 !important;
