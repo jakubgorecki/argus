@@ -755,6 +755,7 @@ else:
     st.markdown("<br>", unsafe_allow_html=True)
 
     st.markdown("""
+<style>
 .row-block [data-testid="stHorizontalBlock"],
 [data-testid="stHorizontalBlock"]:has(.row-marker) {
     gap: 0 !important;
