@@ -32,18 +32,7 @@
     --argus-accent-light: #f3f3f5;
 }
 
-/* Dark mode overrides: Use Streamlit variables where possible to inherit app theme */
-@media (prefers-color-scheme: dark) {
-    :root {
-        --argus-bg: #1A1A1A;
-        /* Slightly lighter than pure black for depth */
-        --argus-card-bg: #262626;
-        --argus-border: #333333;
-        --argus-text-dark: #FFFFFF;
-        --argus-text-muted: #BDBDBD;
-        --argus-accent-light: #2D2D2D;
-    }
-}
+
 
 /* 2. White-labeling: Hide only Deploy and Menu, keeping header clean but functional */
 [data-testid="stAppDeployButton"],
